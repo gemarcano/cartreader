@@ -16491,7 +16491,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 55.88 0)
 			(effects
 				(font
@@ -16625,7 +16625,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 45.72 0)
 			(effects
 				(font
@@ -16823,7 +16823,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 30.48 0)
 			(effects
 				(font
@@ -17441,7 +17441,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 40.64 0)
 			(effects
 				(font
@@ -17840,7 +17840,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 60.96 0)
 			(effects
 				(font
@@ -18039,7 +18039,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 35.56 0)
 			(effects
 				(font
@@ -18302,7 +18302,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 50.8 0)
 			(effects
 				(font
@@ -19797,22 +19797,22 @@
 		(fields_autoplaced yes)
 		(uuid "b95bdf08-0b54-4e5f-91bf-f1e1d1df7ca1")
 		(property "Reference" "R1"
-			(at 247.65 147.32 90)
+			(at 247.65 148.59 90)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Value" "220R"
-			(at 247.65 149.86 90)
+		(property "Value" "1k"
+			(at 247.65 151.13 90)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
 			(at 247.65 153.67 0)
 			(effects
 				(font
@@ -19831,6 +19831,24 @@
 			)
 		)
 		(property "Description" ""
+			(at 247.65 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey Product Number" ""
+			(at 247.65 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer Product Number" ""
 			(at 247.65 153.67 0)
 			(effects
 				(font
@@ -20713,7 +20731,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 25.4 0)
 			(effects
 				(font
@@ -21195,7 +21213,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(dnp no)
+		(dnp yes)
 		(fields_autoplaced yes)
 		(uuid "dd184fc1-799a-4fa0-88eb-e4a59cd75459")
 		(property "Reference" "SW1"
@@ -21233,6 +21251,24 @@
 			)
 		)
 		(property "Description" ""
+			(at 161.29 152.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey Product Number" ""
+			(at 161.29 152.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer Product Number" ""
 			(at 161.29 152.4 0)
 			(effects
 				(font
@@ -21351,7 +21387,7 @@
 				)
 			)
 		)
-		(property "Footprint" "LED_THT:LED_D3.0mm"
+		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
 			(at 234.95 153.67 0)
 			(effects
 				(font
@@ -21370,6 +21406,24 @@
 			)
 		)
 		(property "Description" ""
+			(at 234.95 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey Product Number" ""
+			(at 234.95 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer Product Number" ""
 			(at 234.95 153.67 0)
 			(effects
 				(font
@@ -21696,7 +21750,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_ISO7380_Pad"
 			(at 254 20.32 0)
 			(effects
 				(font
