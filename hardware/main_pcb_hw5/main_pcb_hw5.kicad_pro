@@ -553,7 +553,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "main_pcb_gerber/",
       "pos_files": "",
       "specctra_dsn": "main_pcb.dsn",
       "step": "main_pcb.step",
