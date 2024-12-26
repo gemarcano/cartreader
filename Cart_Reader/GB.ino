@@ -7,10 +7,11 @@
    Variables
  *****************************************/
 // Game Boy
-word sramBanks;
-word romBanks;
+byte sramBanks;
+byte romBanks;
 word lastByte = 0;
 boolean audioWE = 0;
+word checksum = 0;
 
 /******************************************
    Menu
@@ -935,8 +936,9 @@ void writeByteSRAM_GB(int myAddress, byte myData) {
 // Read Cartridge Header
 void getCartInfo_GB() {
   // Read Header into array
-  for (int currByte = 0x100; currByte < 0x150; currByte++) {
-    sdBuffer[currByte] = readByte_GB(currByte);
+  uint8_t header[0x50];
+  for (byte currByte = 0; currByte < 0x50; currByte++) {
+    header[currByte] = readByte_GB(currByte + 0x100);
   }
 
   /* Compare Nintendo logo against known checksum, 156 bytes starting at 0x04
@@ -960,23 +962,11 @@ void getCartInfo_GB() {
 
   // Calculate header checksum
   byte headerChecksum = 0;
-  for (int currByte = 0x134; currByte < 0x14D; currByte++) {
-    headerChecksum = headerChecksum - sdBuffer[currByte] - 1;
+  for (byte currByte = 0x34; currByte < 0x4D; currByte++) {
+    headerChecksum = headerChecksum - header[currByte] - 1;
   }
 
-  if (headerChecksum != sdBuffer[0x14D]) {
-    // Read Header into array a second time
-    for (int currByte = 0x100; currByte < 0x150; currByte++) {
-      sdBuffer[currByte] = readByte_GB(currByte);
-    }
-    // Calculate header checksum a second time
-    headerChecksum = 0;
-    for (int currByte = 0x134; currByte < 0x14D; currByte++) {
-      headerChecksum = headerChecksum - sdBuffer[currByte] - 1;
-    }
-  }
-
-  if (headerChecksum != sdBuffer[0x14D]) {
+  if (headerChecksum != header[0x4D]) {
     print_Error(F("HEADER CHECKSUM ERROR"));
     println_Msg(FS(FSTRING_EMPTY));
     println_Msg(FS(FSTRING_EMPTY));
@@ -986,16 +976,16 @@ void getCartInfo_GB() {
     println_Msg(F("cart and try again"));
     display_Update();
     wait();
+    headerChecksum = header[0x4D];
   }
 
-  romType = sdBuffer[0x147];
-  romSize = sdBuffer[0x148];
-  sramSize = sdBuffer[0x149];
+  romType = header[0x47];
+  romSize = header[0x48];
+  sramSize = header[0x49];
 
   // Get Checksum as string
-  eepbit[6] = sdBuffer[0x14E];
-  eepbit[7] = sdBuffer[0x14F];
-  sprintf(checksumStr, "%02X%02X", eepbit[6], eepbit[7]);
+  checksum = header[0x4E] << 8 | header[0x4F];
+  sprintf(checksumStr, "%04X", checksum);
 
   // ROM banks
   romBanks = 2;
@@ -1039,21 +1029,17 @@ void getCartInfo_GB() {
   if (romType == 32) {
     sramBanks = 8;
     lastByte = 0xAFFF;
-  } else if (romType == 34) {                                       // MBC7
-    lastByte = (*((uint16_t*)(eepbit + 6)) == 0xa5be ? 512 : 256);  // Only "Command Master" use LC66 EEPROM
+  } else if (romType == 34) { // MBC7
+    lastByte = checksum == 0xa5be ? 512 : 256; // Only "Command Master" use LC66 EEPROM
   }
 
   // Get name
-  byte myByte = 0;
   byte myLength = 0;
-  byte x = 0;
-  if (sdBuffer[0x143] == 0x80 || sdBuffer[0x143] == 0xC0) {
-    x++;
-  }
-  for (int addr = 0x0134; addr <= 0x0143 - x; addr++) {
-    myByte = sdBuffer[addr];
-    if (isprint(myByte) && myByte != '<' && myByte != '>' && myByte != ':' && myByte != '"' && myByte != '/' && myByte != '\\' && myByte != '|' && myByte != '?' && myByte != '*') {
-      romName[myLength++] = char(myByte);
+  const bool tag = header[0x43] == 0x80 || header[0x43] == 0xC0;
+  for (byte addr = 0x34; addr <= 0x43 - tag; addr++) {
+    char myByte = header[addr];
+    if (isprint(myByte) && !strchr("<>:\"/\\|?*", myByte)) {
+      romName[myLength++] = myByte;
     } else if (myLength == 0 || romName[myLength - 1] != '_') {
       romName[myLength++] = '_';
     }
@@ -1061,47 +1047,47 @@ void getCartInfo_GB() {
 
   // Find Game Serial
   cartID[0] = 0;
-  if (sdBuffer[0x143] == 0x80 || sdBuffer[0x143] == 0xC0) {
-    if ((romName[myLength - 4] == 'A' || romName[myLength - 4] == 'B' || romName[myLength - 4] == 'H' || romName[myLength - 4] == 'K' || romName[myLength - 4] == 'V') && (romName[myLength - 1] == 'A' || romName[myLength - 1] == 'B' || romName[myLength - 1] == 'D' || romName[myLength - 1] == 'E' || romName[myLength - 1] == 'F' || romName[myLength - 1] == 'I' || romName[myLength - 1] == 'J' || romName[myLength - 1] == 'K' || romName[myLength - 1] == 'P' || romName[myLength - 1] == 'S' || romName[myLength - 1] == 'U' || romName[myLength - 1] == 'X' || romName[myLength - 1] == 'Y')) {
-      cartID[0] = romName[myLength - 4];
-      cartID[1] = romName[myLength - 3];
-      cartID[2] = romName[myLength - 2];
-      cartID[3] = romName[myLength - 1];
+  if (tag) {
+    if (strchr("ABHKV", romName[myLength - 4]) && strchr("ABDEFIJKPSUXY", romName[myLength - 1])) {
+      memcpy(cartID, romName + myLength, 4);
       myLength -= 4;
       romName[myLength] = 0;
     }
   }
 
   // Strip trailing white space
-  while (
-    myLength && (romName[myLength - 1] == '_' || romName[myLength - 1] == ' ')) {
+  while (myLength && strchr("_ ", romName[myLength - 1])) {
     myLength--;
   }
   romName[myLength] = 0;
 
   // M161 (Mani 4 in 1)
-  if (strncmp(romName, "TETRIS SET", 10) == 0 && sdBuffer[0x14D] == 0x3F) {
+  if (strncmp(romName, "TETRIS SET", 10) == 0 && headerChecksum == 0x3F) {
     romType = 0x104;
   }
 
   // MMM01 (Mani 4 in 1)
   if (
-    (
-      strncmp(romName, "BOUKENJIMA2 SET", 15) == 0 && sdBuffer[0x14D] == 0)
-    || (strncmp(romName, "BUBBLEBOBBLE SET", 16) == 0 && sdBuffer[0x14D] == 0xC6) || (strncmp(romName, "GANBARUGA SET", 13) == 0 && sdBuffer[0x14D] == 0x90) || (strncmp(romName, "RTYPE 2 SET", 11) == 0 && sdBuffer[0x14D] == 0x32)) {
+      (strncmp(romName, "BOUKENJIMA2 SET", 15) == 0 && headerChecksum == 0) ||
+      (strncmp(romName, "BUBBLEBOBBLE SET", 16) == 0 && headerChecksum == 0xC6) ||
+      (strncmp(romName, "GANBARUGA SET", 13) == 0 && headerChecksum == 0x90) ||
+      (strncmp(romName, "RTYPE 2 SET", 11) == 0 && headerChecksum == 0x32)) {
     romType = 0x0B;
   }
 
   // MBC1M
   if (
-    (
-      strncmp(romName, "MOMOCOL", 7) == 0 && sdBuffer[0x14D] == 0x28)
-    || (strncmp(romName, "BOMCOL", 6) == 0 && sdBuffer[0x14D] == 0x86) || (strncmp(romName, "GENCOL", 6) == 0 && sdBuffer[0x14D] == 0x8A) || (strncmp(romName, "SUPERCHINESE 123", 16) == 0 && sdBuffer[0x14D] == 0xE4) || (strncmp(romName, "MORTALKOMBATI&II", 16) == 0 && sdBuffer[0x14D] == 0xB9) || (strncmp(romName, "MORTALKOMBAT DUO", 16) == 0 && sdBuffer[0x14D] == 0xA7)) {
+      (strncmp(romName, "MOMOCOL", 7) == 0 && headerChecksum == 0x28) ||
+      (strncmp(romName, "BOMCOL", 6) == 0 && headerChecksum == 0x86) ||
+      (strncmp(romName, "GENCOL", 6) == 0 && headerChecksum == 0x8A) ||
+      (strncmp(romName, "SUPERCHINESE 123", 16) == 0 && headerChecksum == 0xE4) ||
+      (strncmp(romName, "MORTALKOMBATI&II", 16) == 0 && headerChecksum == 0xB9) ||
+      (strncmp(romName, "MORTALKOMBAT DUO", 16) == 0 && headerChecksum == 0xA7)) {
     romType += 0x100;
   }
 
   // ROM revision
-  romVersion = sdBuffer[0x14C];
+  romVersion = header[0x4C];
 }
 
 /******************************************
@@ -1114,7 +1100,7 @@ void readROM_GB() {
 
   word endAddress = 0x7FFF;
   word romAddress = 0;
-  word startBank = 1;
+  byte startBank = 1;
 
   //Initialize progress bar
   uint32_t processedProgressBar = 0;
@@ -1133,7 +1119,7 @@ void readROM_GB() {
     endAddress = 0x3FFF;
   }
 
-  for (word currBank = startBank; currBank < romBanks; currBank++) {
+  for (byte currBank = startBank; currBank < romBanks; currBank++) {
     // Second bank starts at 0x4000
     if (currBank > 1) {
       romAddress = 0x4000;
@@ -1218,7 +1204,7 @@ void readROM_GB() {
 
     // Read banks and save to SD
     while (romAddress <= endAddress) {
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         sdBuffer[i] = readByte_GB(romAddress + i);
       }
       myFile.write(sdBuffer, 512);
@@ -1233,25 +1219,22 @@ void readROM_GB() {
 }
 
 // Calculate checksum
-unsigned int calc_checksum_GB(char* fileName) {
+unsigned int calc_checksum_GB(const char* fileName) {
   unsigned int calcChecksum = 0;
   //  int calcFilesize = 0; // unused
-  unsigned long i = 0;
-  int c = 0;
-
   // If file exists
   if (myFile.open(fileName, O_READ)) {
     //calcFilesize = myFile.fileSize() * 8 / 1024 / 1024; // unused
-    for (i = 0; i < (myFile.fileSize() / 512); i++) {
+    for (unsigned long i = 0; i < (myFile.fileSize() / 512); i++) {
       myFile.read(sdBuffer, 512);
-      for (c = 0; c < 512; c++) {
+      for (word c = 0; c < 512; c++) {
         calcChecksum += sdBuffer[c];
       }
     }
     myFile.close();
     // Subtract checksum bytes
-    calcChecksum -= eepbit[6];
-    calcChecksum -= eepbit[7];
+    calcChecksum -= checksum >> 8;
+    calcChecksum -= checksum & 0xFF;
 
     // Return result
     return (calcChecksum);
@@ -1436,7 +1419,7 @@ unsigned long verifySRAM_GB() {
         for (word sramAddress = 0xA000; sramAddress <= lastByte; sramAddress += 64) {
           //fill sdBuffer
           myFile.read(sdBuffer, 64);
-          for (int c = 0; c < 64; c++) {
+          for (byte c = 0; c < 64; c++) {
             if (readByteSRAM_GB(sramAddress + c) != sdBuffer[c]) {
               writeErrors++;
             }
@@ -1503,7 +1486,7 @@ void readSRAMFLASH_MBC6_GB() {
 
     // Read banks and save to SD
     while (romAddress <= 0x5FFF) {
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         sdBuffer[i] = readByte_GB(romAddress + i);
       }
       myFile.write(sdBuffer, 512);
@@ -1615,7 +1598,7 @@ void writeSRAMFLASH_MBC6_GB() {
         writeByte_GB(0x3800, 0x08);
         writeByte_GB(0x2000, currBank);
         writeByte_GB(0x3000, currBank);
-        for (int i = 0; i < 128; i++) {
+        for (byte i = 0; i < 128; i++) {
           writeByte_GB(romAddress++, myFile.read());
         }
         writeByte_GB(romAddress - 1, 0x00);
@@ -1681,10 +1664,10 @@ void readEEPROM_MBC7_GB() {
   sendMBC7EEPROM_Inst_GB(2, 0, 0);
 
   // read data from EEPROM
-  for (uint16_t i = 0; i < lastByte; i += 2, data++) {
+  for (word i = 0; i < lastByte; i += 2, data++) {
     *data = 0;
 
-    for (uint8_t j = 0; j < 16; j++) {
+    for (byte j = 0; j < 16; j++) {
       writeByte_GB(0xa080, 0x80);
       writeByte_GB(0xa080, 0xc0);
 
@@ -1757,7 +1740,7 @@ void writeEEPROM_MBC7_GB() {
   display_Update();
 
   // write data to EEPROM by sending WRITE instruction word by word
-  for (uint16_t i = 0; i < lastByte; i += 2, data++) {
+  for (word i = 0; i < lastByte; i += 2, data++) {
     sendMBC7EEPROM_Inst_GB(1, (i >> 1), *data);
 
     // set CS low
@@ -1790,7 +1773,6 @@ void writeEEPROM_MBC7_GB() {
 
 void sendMBC7EEPROM_Inst_GB(uint8_t op, uint8_t addr, uint16_t data) {
   boolean send_data = false;
-  uint8_t i;
 
   op = op & 0x03;
 
@@ -1807,7 +1789,7 @@ void sendMBC7EEPROM_Inst_GB(uint8_t op, uint8_t addr, uint16_t data) {
   writeByte_GB(0xa080, 0xc2);
 
   // send op
-  for (i = 0; i < 2; i++, op <<= 1) {
+  for (byte i = 0; i < 2; i++, op <<= 1) {
     eepbit[1] = (op & 0x02);
     eepbit[0] = (eepbit[1] | 0x80);
     eepbit[1] |= 0xc0;
@@ -1817,7 +1799,7 @@ void sendMBC7EEPROM_Inst_GB(uint8_t op, uint8_t addr, uint16_t data) {
   }
 
   // send addr
-  for (i = 0; i < 8; i++, addr <<= 1) {
+  for (byte i = 0; i < 8; i++, addr <<= 1) {
     eepbit[1] = ((addr & 0x80) >> 6);
     eepbit[0] = (eepbit[1] | 0x80);
     eepbit[1] |= 0xc0;
@@ -1827,7 +1809,7 @@ void sendMBC7EEPROM_Inst_GB(uint8_t op, uint8_t addr, uint16_t data) {
   }
 
   if (send_data) {
-    for (i = 0; i < 16; i++, data <<= 1) {
+    for (byte i = 0; i < 16; i++, data <<= 1) {
       eepbit[1] = ((data & 0x8000) >> 14);
       eepbit[0] = (eepbit[1] | 0x80);
       eepbit[1] |= 0xc0;
@@ -2002,7 +1984,7 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
       display_Update();
 
       // Read x number of banks
-      for (word currBank = 0; currBank < romBanks; currBank++) {
+      for (byte currBank = 0; currBank < romBanks; currBank++) {
         // Blink led
         blinkLED();
 
@@ -2010,11 +1992,11 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
           // Set ROM bank
           writeByte_GB(0x2000, currBank);
         }
-        for (unsigned int currAddr = 0x4000; currAddr < 0x7FFF; currAddr += 512) {
+        for (wordcurrAddr = 0x4000; currAddr < 0x7FFF; currAddr += 512) {
           for (int currByte = 0; currByte < 512; currByte++) {
             sdBuffer[currByte] = readByte_GB(currAddr + currByte);
           }
-          for (int j = 0; j < 512; j++) {
+          for (word j = 0; j < 512; j++) {
             if (sdBuffer[j] != 0xFF) {
               println_Msg(F("Not empty"));
               print_FatalError(F("Erase failed"));
@@ -2058,7 +2040,7 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
         while (currAddr <= endAddr) {
           myFile.read(sdBuffer, 512);
 
-          for (int currByte = 0; currByte < 512; currByte++) {
+          for (word currByte = 0; currByte < 512; currByte++) {
             // Write command sequence
             sendFlashCommand_GB(0xa0, commandSet);
             // Write current byte
@@ -2093,7 +2075,7 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
       uint32_t totalProgressBar = (uint32_t)(romBanks)*16384;
       draw_progressbar(0, totalProgressBar);
 
-      for (word currBank = 0; currBank < romBanks; currBank++) {
+      for (byte currBank = 0; currBank < romBanks; currBank++) {
         // Blink led
         blinkLED();
 
@@ -2102,10 +2084,10 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
         // 0x2A8000 fix
         writeByte_GB(0x4000, 0x0);
 
-        for (unsigned int currAddr = 0x4000; currAddr < 0x7FFF; currAddr += 512) {
+        for (word currAddr = 0x4000; currAddr < 0x7FFF; currAddr += 512) {
           myFile.read(sdBuffer, 512);
 
-          for (int currByte = 0; currByte < 512; currByte++) {
+          for (word currByte = 0; currByte < 512; currByte++) {
             // Write command sequence
             sendFlashCommand_GB(0xa0, commandSet);
             // Write current byte
@@ -2142,10 +2124,10 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
       uint32_t totalProgressBar = (uint32_t)(romBanks)*16384;
       draw_progressbar(0, totalProgressBar);
 
-      for (unsigned int currAddr = 0; currAddr < 0x7FFF; currAddr += 512) {
+      for (word currAddr = 0; currAddr < 0x7FFF; currAddr += 512) {
         myFile.read(sdBuffer, 512);
 
-        for (int currByte = 0; currByte < 512; currByte++) {
+        for (word currByte = 0; currByte < 512; currByte++) {
           // Write command sequence
           sendFlashCommand_GB(0xa0, commandSet);
           // Write current byte
@@ -2177,7 +2159,7 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
     word romAddress = 0;
 
     // Read number of banks and switch banks
-    for (word bank = 1; bank < romBanks; bank++) {
+    for (byte bank = 1; bank < romBanks; bank++) {
       if (MBC > 0) {
         if (romType >= 5) {                   // MBC2 and above
           writeByte_GB(0x2100, bank);         // Set ROM bank
@@ -2198,7 +2180,7 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
         // Fill sdBuffer
         myFile.read(sdBuffer, 512);
         // Compare
-        for (int i = 0; i < 512; i++) {
+        for (word i = 0; i < 512; i++) {
           if (readByte_GB(romAddress + i) != sdBuffer[i]) {
             writeErrors++;
           }
@@ -2417,18 +2399,18 @@ bool writeCFI_GB() {
     display_Update();
 
     // Read x number of banks
-    for (word currBank = 0; currBank < romBanks; currBank++) {
+    for (byte currBank = 0; currBank < romBanks; currBank++) {
       // Blink led
       blinkLED();
 
       // Set ROM bank
       writeByte_GB(0x2000, currBank);
 
-      for (unsigned int currAddr = 0x4000; currAddr < 0x7FFF; currAddr += 512) {
-        for (int currByte = 0; currByte < 512; currByte++) {
+      for (word currAddr = 0x4000; currAddr < 0x7FFF; currAddr += 512) {
+        for (word currByte = 0; currByte < 512; currByte++) {
           sdBuffer[currByte] = readByte_GB(currAddr + currByte);
         }
-        for (int j = 0; j < 512; j++) {
+        for (word j = 0; j < 512; j++) {
           if (sdBuffer[j] != 0xFF) {
             println_Msg(F("Not empty"));
             print_FatalError(F("Erase failed"));
@@ -2444,7 +2426,7 @@ bool writeCFI_GB() {
     word currAddr = 0;
     word endAddr = 0x3FFF;
 
-    for (word currBank = 0; currBank < romBanks; currBank++) {
+    for (byte currBank = 0; currBank < romBanks; currBank++) {
       // Blink led
       blinkLED();
 
@@ -2461,7 +2443,7 @@ bool writeCFI_GB() {
       while (currAddr <= endAddr) {
         myFile.read(sdBuffer, 512);
 
-        for (int currByte = 0; currByte < 512; currByte++) {
+        for (word currByte = 0; currByte < 512; currByte++) {
           // Write command sequence
           sendCFICommand_GB(0xa0);
 
@@ -2508,7 +2490,7 @@ bool writeCFI_GB() {
     word romAddress = 0;
 
     // Read number of banks and switch banks
-    for (word bank = 1; bank < romBanks; bank++) {
+    for (byte bank = 1; bank < romBanks; bank++) {
       if (romType >= 5) {                   // MBC2 and above
         writeByte_GB(0x2100, bank);         // Set ROM bank
       } else {                              // MBC1
@@ -2528,7 +2510,7 @@ bool writeCFI_GB() {
         // Fill sdBuffer
         myFile.read(sdBuffer, 512);
         // Compare
-        for (int i = 0; i < 512; i++) {
+        for (word i = 0; i < 512; i++) {
           if (readByte_GB(romAddress + i) != sdBuffer[i]) {
             writeErrors++;
           }
@@ -2641,7 +2623,7 @@ void readPelican_GB() {
   uint32_t totalProgressBar = (uint32_t)(romBanks)*8192;
   draw_progressbar(0, totalProgressBar);
 
-  for (size_t workBank = 0; workBank < romBanks; workBank++) {  // Loop over banks
+  for (byte workBank = 0; workBank < romBanks; workBank++) {  // Loop over banks
 
     startAddress = 0x2000;
 
@@ -2649,7 +2631,7 @@ void readPelican_GB() {
 
     // Read banks and save to SD
     while (startAddress <= finalAddress) {
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         sdBuffer[i] = readByte_GB(startAddress + i);
       }
       myFile.write(sdBuffer, 512);
@@ -2780,7 +2762,7 @@ void writePelican_GB() {
     display_Update();
 
     // Read x number of banks
-    for (word currBank = 0; currBank < romBanks; currBank++) {
+    for (byte currBank = 0; currBank < romBanks; currBank++) {
       // Blink led
       blinkLED();
 
@@ -2788,10 +2770,10 @@ void writePelican_GB() {
       writeByteSRAM_GB(0xA000, currBank);
 
       for (word currAddr = 0x2000; currAddr < 0x4000; currAddr += 0x200) {
-        for (int currByte = 0; currByte < 512; currByte++) {
+        for (word currByte = 0; currByte < 512; currByte++) {
           sdBuffer[currByte] = readByte_GB(currAddr + currByte);
         }
-        for (int j = 0; j < 512; j++) {
+        for (word j = 0; j < 512; j++) {
           if (sdBuffer[j] != 0xFF) {
             println_Msg(F("Not empty"));
             print_FatalError(F("Erase failed"));
@@ -2820,7 +2802,7 @@ void writePelican_GB() {
   uint32_t totalProgressBar = (uint32_t)(romBanks)*8192;
   draw_progressbar(0, totalProgressBar);
 
-  for (word currBank = 0; currBank < romBanks; currBank++) {
+  for (byte currBank = 0; currBank < romBanks; currBank++) {
     // Blink led
     blinkLED();
     currAddr = 0x2000;
@@ -2835,7 +2817,7 @@ void writePelican_GB() {
         // Set ROM bank
         writeByteSRAM_GB(0xA000, currBank);
 
-        for (int currByte = 0; currByte < 128; currByte++) {
+        for (byte currByte = 0; currByte < 128; currByte++) {
 
           // Write current byte
           writeByte_GB(currAddr + currByte, sdBuffer[currByte]);
@@ -2851,7 +2833,7 @@ void writePelican_GB() {
       while (currAddr <= endAddr) {
         myFile.read(sdBuffer, 512);
 
-        for (int currByte = 0; currByte < 512; currByte++) {
+        for (word currByte = 0; currByte < 512; currByte++) {
 
           toggle = true;
           // Write current byte
@@ -2903,7 +2885,7 @@ void writePelican_GB() {
   word romAddress = 0x2000;
 
   // Read number of banks and switch banks
-  for (word bank = 0; bank < romBanks; bank++) {
+  for (byte bank = 0; bank < romBanks; bank++) {
     writeByteSRAM_GB(0xA000, bank);  // Set ROM bank
     romAddress = 0x2000;
 
@@ -2915,7 +2897,7 @@ void writePelican_GB() {
       // Fill sdBuffer
       myFile.read(sdBuffer, 512);
       // Compare
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         if (readByte_GB(romAddress + i) != sdBuffer[i]) {
           writeErrors++;
         }
@@ -2977,7 +2959,7 @@ void readMegaMem_GB() {
 
   // Read banks and save to SD
   while (startAddress <= finalAddress) {
-    for (int i = 0; i < 512; i++) {
+    for (word i = 0; i < 512; i++) {
       sdBuffer[i] = readByte_GB(startAddress + i);
     }
     myFile.write(sdBuffer, 512);
@@ -3019,7 +3001,7 @@ void readMegaMem_GB() {
   totalProgressBar = (uint32_t)(romBanks)*8192;
   draw_progressbar(0, totalProgressBar);
 
-  for (size_t workBank = 0; workBank < romBanks; workBank++) {  // Loop over banks
+  for (byte workBank = 0; workBank < romBanks; workBank++) {  // Loop over banks
 
     startAddress = 0x4000;
 
@@ -3027,7 +3009,7 @@ void readMegaMem_GB() {
 
     // Read banks and save to SD
     while (startAddress <= finalAddress) {
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         sdBuffer[i] = readByte_GB(startAddress + i);
       }
       myFile.write(sdBuffer, 512);
@@ -3114,7 +3096,7 @@ void writeMegaMem_GB() {
   display_Update();
 
   // Read x number of banks
-  for (word currBank = 0; currBank < romBanks; currBank++) {
+  for (byte currBank = 0; currBank < romBanks; currBank++) {
     // Blink led
     blinkLED();
 
@@ -3122,10 +3104,10 @@ void writeMegaMem_GB() {
     writeByte_GB(0x2000, currBank);
 
     for (word currAddr = 0x4000; currAddr < 0x8000; currAddr += 0x200) {
-      for (int currByte = 0; currByte < 512; currByte++) {
+      for (word currByte = 0; currByte < 512; currByte++) {
         sdBuffer[currByte] = readByte_GB(currAddr + currByte);
       }
-      for (int j = 0; j < 512; j++) {
+      for (word j = 0; j < 512; j++) {
         if (sdBuffer[j] != 0xFF) {
           println_Msg(F("Not empty"));
           print_FatalError(F("Erase failed"));
@@ -3160,7 +3142,7 @@ void writeMegaMem_GB() {
   uint32_t totalProgressBar = (uint32_t)(romBanks)*8192;
   draw_progressbar(0, totalProgressBar);
 
-  for (word currBank = 0; currBank < romBanks; currBank++) {
+  for (byte currBank = 0; currBank < romBanks; currBank++) {
     // Blink led
     blinkLED();
     currAddr = 0x4000;
@@ -3169,7 +3151,7 @@ void writeMegaMem_GB() {
       while (currAddr <= endAddr) {
         myFile.read(sdBuffer, 512);
 
-        for (int currByte = 0; currByte < 512; currByte++) {
+        for (word currByte = 0; currByte < 512; currByte++) {
 
           toggle = true;
           // Write current byte
@@ -3228,7 +3210,7 @@ void writeMegaMem_GB() {
   word romAddress = 0x4000;
 
   // Read number of banks and switch banks
-  for (word bank = 0; bank < romBanks; bank++) {
+  for (byte bank = 0; bank < romBanks; bank++) {
     writeByte_GB(0x2000, bank);  // Set ROM bank
     romAddress = 0x4000;
 
@@ -3240,7 +3222,7 @@ void writeMegaMem_GB() {
       // Fill sdBuffer
       myFile.read(sdBuffer, 512);
       // Compare
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         if (readByte_GB(romAddress + i) != sdBuffer[i]) {
           writeErrors++;
         }
@@ -3330,7 +3312,7 @@ void readGameshark_GB() {
   uint32_t totalProgressBar = (uint32_t)(romBanks)*8192;
   draw_progressbar(0, totalProgressBar);
 
-  for (size_t workBank = 0; workBank < romBanks; workBank++) {  // Loop over banks
+  for (byte workBank = 0; workBank < romBanks; workBank++) {  // Loop over banks
 
     startAddress = 0x4000;
 
@@ -3338,7 +3320,7 @@ void readGameshark_GB() {
 
     // Read banks and save to SD
     while (startAddress <= finalAddress) {
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         sdBuffer[i] = readByte_GB(startAddress + i);
       }
       myFile.write(sdBuffer, 512);
@@ -3418,7 +3400,7 @@ void writeGameshark_GB() {
   display_Update();
 
   // Read x number of banks
-  for (word currBank = 0; currBank < romBanks; currBank++) {
+  for (byte currBank = 0; currBank < romBanks; currBank++) {
     // Blink led
     blinkLED();
 
@@ -3426,10 +3408,10 @@ void writeGameshark_GB() {
     writeByte_GB(0x7FE1, currBank);
 
     for (word currAddr = 0x4000; currAddr < 0x6000; currAddr += 0x200) {
-      for (int currByte = 0; currByte < 512; currByte++) {
+      for (word currByte = 0; currByte < 512; currByte++) {
         sdBuffer[currByte] = readByte_GB(currAddr + currByte);
       }
-      for (int j = 0; j < 512; j++) {
+      for (word j = 0; j < 512; j++) {
         if (sdBuffer[j] != 0xFF) {
           println_Msg(F("Not empty"));
           print_FatalError(F("Erase failed"));
@@ -3450,7 +3432,7 @@ void writeGameshark_GB() {
   uint32_t totalProgressBar = (uint32_t)(romBanks)*8192;
   draw_progressbar(0, totalProgressBar);
 
-  for (word currBank = 0; currBank < romBanks; currBank++) {
+  for (byte currBank = 0; currBank < romBanks; currBank++) {
     // Blink led
     blinkLED();
     currAddr = 0x4000;
@@ -3458,7 +3440,7 @@ void writeGameshark_GB() {
     while (currAddr <= endAddr) {
       myFile.read(sdBuffer, 512);
 
-      for (int currByte = 0; currByte < 512; currByte++) {
+      for (word currByte = 0; currByte < 512; currByte++) {
 
         // Write command sequence
         sendGamesharkCommand_GB(0xA0);
@@ -3496,7 +3478,7 @@ void writeGameshark_GB() {
   word romAddress = 0x4000;
 
   // Read number of banks and switch banks
-  for (word bank = 0; bank < romBanks; bank++) {
+  for (byte bank = 0; bank < romBanks; bank++) {
     writeByte_GB(0x7FE1, bank);  // Set ROM bank
     romAddress = 0x4000;
 
@@ -3508,7 +3490,7 @@ void writeGameshark_GB() {
       // Fill sdBuffer
       myFile.read(sdBuffer, 512);
       // Compare
-      for (int i = 0; i < 512; i++) {
+      for (word i = 0; i < 512; i++) {
         if (readByte_GB(romAddress + i) != sdBuffer[i]) {
           writeErrors++;
         }
