@@ -2517,9 +2517,7 @@ void print_FatalError(byte errorMessage) {
 void wait() {
   // Switch status LED off
   statusLED(false);
-#if defined(ENABLE_LCD)
-  wait_btn();
-#elif defined(ENABLE_OLED)
+#if defined(ENABLE_LCD) || defined(ENABLE_OLED)
   wait_btn();
 #elif defined(ENABLE_SERIAL)
   wait_serial();
@@ -3075,7 +3073,7 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
     // if the Cart Readers button is hold continiously leave the menu
     // so the currently highlighted action can be executed
 
-    if (b == 3) {
+    if (b == 3 || b == 4) {
       idleTime = millis();
       // All done
       numPages = 0;
@@ -3154,33 +3152,41 @@ void checkUpdater() {
 *****************************************/
 // Using Serial Monitor
 #if defined(ENABLE_SERIAL)
+int8_t checkButton2();
 uint8_t checkButton() {
-  while (Serial.available() == 0) {
+  int8_t result;
+  do {
+    result = checkButton2();
+  } while (result == -1);
+
+  // checkButton2 doesn't return a negative number other than -1, which we
+  // check for above
+  return static_cast<uint8_t>(result);
+}
+
+int8_t checkButton2() {
+  if (Serial.available() == 0) {
+    return -1;
   }
+
   // read() can't return -1 since there's data available.
-  char incomingByte = Serial.read();
-
-  //Next
-  if (incomingByte == 'd') {
-    return 1;
+  switch (static_cast<char>(Serial.read()))
+  {
+    case 'D'
+    case 'd':
+      return 1;
+    case 'U':
+    case 'u':
+      return 2;
+    case ' ':
+    case '0':
+      return 3;
+    case 'l':
+    case 'L':
+      return 4;
+    default:
+      return 0;
   }
-
-  //Previous
-  else if (incomingByte == 'u') {
-    return 2;
-  }
-
-  //Selection
-  else if ((incomingByte == ' ') || (incomingByte == '0')) {
-    return 3;
-  }
-
-  //Long Press (simulate)
-  else if ((incomingByte == 'l') || (incomingByte == 'L')) {
-    return 4;
-  }
-
-  return 0;
 }
 
 void wait_serial() {
@@ -3359,13 +3365,13 @@ void wait_btn() {
 
 // Using rotary encoder (HW4/HW5)
 #if (defined(ENABLE_LCD) && defined(ENABLE_ROTARY))
-// Read encoder state
+
 uint8_t checkButton() {
   // Read rotary encoder
   encoder.tick();
   int newPos = encoder.getPosition();
   // Read button
-  boolean reading = (PING & (1 << PING2)) >> PING2;
+  boolean button = (PING & (1 << PING2)) >> PING2;
 
   // Check if rotary encoder has changed
   if (rotaryPos != newPos) {
@@ -3376,26 +3382,19 @@ uint8_t checkButton() {
     } else if (rotaryDir == -1) {
       return 2;
     }
-  } else if (reading != buttonState) {
-    if (reading != lastButtonState) {
+  } else if (button != buttonState) {
+    if (button != lastButtonState) {
       lastDebounceTime = millis();
-      lastButtonState = reading;
+      lastButtonState = button;
     } else if ((millis() - lastDebounceTime) > debounceDelay) {
-      buttonState = reading;
+      buttonState = button;
       // Button was pressed down
       if (buttonState == 0) {
         rgbLed(black_color);
-        unsigned long pushTime = millis();
-        // Wait until button was let go again
-        while ((PING & (1 << PING2)) >> PING2 == 0) {
-          // Signal long press delay reached
-          if ((millis() - pushTime) > 2000) {
-            rgbLed(green_color);
-          }
-        }
-
-        // 2 second long press
-        if ((millis() - pushTime) > 2000) {
+        return 0;
+      } else {
+        // Signal long press delay reached
+        if ((millis() - lastDebounceTime) > 2000) {
           return 4;
         }
         // normal press
@@ -3404,6 +3403,10 @@ uint8_t checkButton() {
         }
       }
     }
+  }
+  // Update color for long press (FIXME what's the chance of millis wrapping?)
+  if ((millis() - lastDebounceTime) > 2000 && buttonState == 0) {
+    rgbLed(green_color);
   }
   return 0;
 }
