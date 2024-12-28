@@ -3,6 +3,8 @@
 //******************************************
 #ifdef ENABLE_GBX
 
+#include "GB.h"
+
 /******************************************
    Variables
  *****************************************/
@@ -12,53 +14,6 @@ byte romBanks;
 word lastByte = 0;
 boolean audioWE = 0;
 word checksum = 0;
-
-/******************************************
-   Menu
- *****************************************/
-// GBx start menu
-static const char gbxMenuItem1[] PROGMEM = "Game Boy (Color)";
-static const char gbxMenuItem2[] PROGMEM = "GB Advance (3V)";
-static const char gbxMenuItem3[] PROGMEM = "Flash Repro";
-static const char gbxMenuItem4[] PROGMEM = "NPower GB Memory";
-static const char gbxMenuItem5[] PROGMEM = "Flash Codebreaker";
-static const char gbxMenuItem6[] PROGMEM = "Flash Datel Device";
-static const char* const menuOptionsGBx[] PROGMEM = { gbxMenuItem1, gbxMenuItem2, gbxMenuItem3, gbxMenuItem4, gbxMenuItem5, gbxMenuItem6, FSTRING_RESET };
-
-// GB menu items
-static const char* const menuOptionsGB[] PROGMEM = { FSTRING_READ_ROM, FSTRING_READ_SAVE, FSTRING_WRITE_SAVE, FSTRING_RESET };
-
-#if defined(ENABLE_FLASH)
-// GB Flash items
-static const char GBFlashItem1[] PROGMEM = "GB 29F/39SF Repro";
-static const char GBFlashItem2[] PROGMEM = "GB CFI Repro";
-static const char GBFlashItem3[] PROGMEM = "GB CFI and Save";
-static const char GBFlashItem4[] PROGMEM = "GB Smart";
-static const char GBFlashItem5[] PROGMEM = "GBA Repro (3V)";
-static const char GBFlashItem6[] PROGMEM = "GBA 369-in-1 (3V)";
-static const char* const menuOptionsGBFlash[] PROGMEM = { GBFlashItem1, GBFlashItem2, GBFlashItem3, GBFlashItem4, GBFlashItem5, GBFlashItem6, FSTRING_RESET };
-
-// 29F Flash items
-static const char GBFlash29Item1[] PROGMEM = "DIY MBC3 (WR)";
-static const char GBFlash29Item2[] PROGMEM = "DIY MBC5 (WR)";
-static const char GBFlash29Item3[] PROGMEM = "HDR MBC30 (Audio)";
-static const char GBFlash29Item4[] PROGMEM = "HDR GameBoy Cam";
-static const char GBFlash29Item5[] PROGMEM = "Orange FM (WR)";
-static const char GBFlash29Item6[] PROGMEM = "39SF MBC5 (Audio)";
-static const char* const menuOptionsGBFlash29[] PROGMEM = { GBFlash29Item1, GBFlash29Item2, GBFlash29Item3, GBFlash29Item4, GBFlash29Item5, GBFlash29Item6, FSTRING_RESET };
-#endif
-
-// Pelican Codebreaker, Brainboy, and Monster Brain Operation Menu
-static const char PelicanRead[] PROGMEM = "Read Device";
-static const char PelicanWrite[] PROGMEM = "Write Device";
-static const char* const menuOptionsGBPelican[] PROGMEM = { PelicanRead, PelicanWrite };
-
-// Datel Device Operation Menu
-static const char MegaMemRead[] PROGMEM = "Read Mega Memory";
-static const char MegaMemWrite[] PROGMEM = "Write Mega Memory";
-static const char GameSharkRead[] PROGMEM = "Read GBC GameShark";
-static const char GameSharkWrite[] PROGMEM = "Write GBC GameShark";
-static const char* const menuOptionsGBDatel[] PROGMEM = { MegaMemRead, MegaMemWrite, GameSharkRead, GameSharkWrite };
 
 #if defined(ENABLE_FLASH)
 bool gbxFlashCFI() {

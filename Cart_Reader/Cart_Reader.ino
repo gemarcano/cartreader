@@ -64,6 +64,8 @@
 **********************************************************************************/
 
 #include "OSCR.h"
+#include "Cart_Reader.h"
+#include "menu.h"
 
 /******************************************
    Libraries
@@ -87,6 +89,7 @@ template<class T> int EEPROM_readAnything(int ee, T& value);
 #ifdef ENABLE_LCD
 #include <U8g2lib.h>
 U8G2_ST7567_OS12864_F_4W_HW_SPI display(U8G2_R2, /* cs=*/12, /* dc=*/11, /* reset=*/10);
+screen_display display2(display);
 #endif
 
 // Rotary Encoder
@@ -2986,36 +2989,14 @@ byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unuse
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
 unsigned char questionBox_Display(const __FlashStringHelper* question, char answers[7][20], uint8_t num_answers, uint8_t default_choice) {
-  //clear the screen
-  display.clearDisplay();
-  display.updateDisplay();
-  display.setCursor(0, 8);
-  display.setDrawColor(1);
-
   // change the rgb led to the start menu color
   rgbLed(default_choice);
 
-  // print menu
-  display.println(question);
-  display.setCursor(0, display.ty + 8);
-  for (unsigned char i = 0; i < num_answers; i++) {
-    // Add space for the selection dot
-    display.print("   ");
-    // Print menu item
-    display.println(answers[i]);
-    display.setCursor(0, display.ty + 8);
-  }
-  display.updateDisplay();
-
-  // start with the default choice
-  choice = default_choice;
-
-  // draw selection box
-  display.drawBox(1, 8 * choice + 11, 3, 3);
-  display.updateDisplay();
+  question_box2 q_box{display2, question, answers, num_answers, default_choice};
 
   unsigned long idleTime = millis();
   byte currentColor = 0;
+  choice = default_choice;
 
   // wait until user makes his choice
   while (1) {
@@ -3045,12 +3026,6 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
     if (b == 2) {
       idleTime = millis();
 
-      // remove selection box
-      display.setDrawColor(0);
-      display.drawBox(1, 8 * choice + 11, 3, 3);
-      display.setDrawColor(1);
-      display.updateDisplay();
-
       // If cursor on top list entry
       if (choice == 0) {
         // On 2nd, 3rd, ... page go back one page
@@ -3074,9 +3049,7 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
         choice--;
       }
 
-      // draw selection box
-      display.drawBox(1, 8 * choice + 11, 3, 3);
-      display.updateDisplay();
+      q_box.update(choice);
 
       // change RGB led to the color of the current menu option
       rgbLed(choice);
@@ -3086,12 +3059,6 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
     if (b == 1) {
       idleTime = millis();
 
-      // remove selection box
-      display.setDrawColor(0);
-      display.drawBox(1, 8 * choice + 11, 3, 3);
-      display.setDrawColor(1);
-      display.updateDisplay();
-
       if ((choice == num_answers - 1) && (numPages > currPage)) {
         lastPage = currPage;
         currPage++;
@@ -3099,9 +3066,7 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
       } else
         choice = (choice + 1) % num_answers;
 
-      // draw selection box
-      display.drawBox(1, 8 * choice + 11, 3, 3);
-      display.updateDisplay();
+        q_box.update(choice);
 
       // change RGB led to the color of the current menu option
       rgbLed(choice);

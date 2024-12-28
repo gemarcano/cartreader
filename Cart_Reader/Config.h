@@ -29,7 +29,7 @@
     Choose your hardware version:
 */
 
-//#define HW5
+#define HW5
 //#define HW4
 //#define HW3
 //#define HW2
@@ -44,7 +44,7 @@
     Enable this if you have the VSELECT module.
 */
 
-//#define ENABLE_VSELECT
+#define ENABLE_VSELECT
 
 /****/
 
@@ -61,7 +61,7 @@
     type later in this file.
 */
 
-//#define ENABLE_RTC
+#define ENABLE_RTC
 
 /****/
 
