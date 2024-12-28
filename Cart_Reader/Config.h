@@ -488,8 +488,8 @@ also needs ENABLE_FLASH8 and ENABLE_FLASH16 to be enabled
     Toggle clock calibration menu and whether or not to use calibration data from snes_clk.txt
 */
 
-//#define OPTION_CLOCKGEN_CALIBRATION
-//#define OPTION_CLOCKGEN_USE_CALIBRATION
+#define OPTION_CLOCKGEN_CALIBRATION
+#define OPTION_CLOCKGEN_USE_CALIBRATION
 
 /****/
 

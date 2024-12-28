@@ -235,13 +235,6 @@ void print_STR(byte string_number, boolean newline) {
 /******************************************
    Variables
  *****************************************/
-#ifdef ENABLE_ROTARY
-// Button debounce
-boolean buttonState = HIGH;          // the current reading from the input pin
-boolean lastButtonState = HIGH;      // the previous reading from the input pin
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-#endif
 
 #ifdef ENABLE_OLED
 // Button 1
@@ -908,67 +901,23 @@ void printInstructions() {
 
 #if (defined(ENABLE_OLED) || defined(ENABLE_LCD))
 int navigateMenu(int min, int max, void (*printSelection)(int)) {
-  uint8_t b = 0;
   int i = min;
 
-  // Check Button Status
-#if defined(ENABLE_OLED)
-  buttonVal1 = (PIND & (1 << 7));  // PD7
-#elif defined(ENABLE_LCD)
-  boolean buttonVal1 = (PING & (1 << 2));  //PG2
-#endif /* ENABLE_OLED | ENABLE_LCD */
-
-  if (buttonVal1 == LOW) {  // Button Pressed
-    while (1) {             // Scroll Mapper List
-#if defined(ENABLE_OLED)
-      buttonVal1 = (PIND & (1 << 7));  // PD7
-#elif defined(ENABLE_LCD)
-      buttonVal1 = (PING & (1 << 2));      // PG2
-#endif /* ENABLE_OLED | ENABLE_LCD */
-
-      if (buttonVal1 == HIGH) {  // Button Released
-        // Correct Overshoot
-        if (i == min)
-          i = max;
-        else
-          i--;
-        break;
-      }
-      printSelection(i);
-      display_Update();
-      if (i == max)
-        i = min;
-      else
-        i++;
-      delay(250);
-    }
-  }
-  b = 0;
-
-  printSelection(i);
-  printInstructions();
-
-  while (1) {
-    b = checkButton();
+  for(;;) {
+    printSelection(i);
+    printInstructions();
+    uint8_t b = checkButton();
     if (b == 2) {  // Previous Mapper (doubleclick)
       if (i == min)
         i = max;
       else
         i--;
-
-      // Only update display after input because of slow LCD library
-      printSelection(i);
-      printInstructions();
     }
     if (b == 1) {  // Next Mapper (press)
       if (i == max)
         i = min;
       else
         i++;
-
-      // Only update display after input because of slow LCD library
-      printSelection(i);
-      printInstructions();
     }
     if (b == 3) {  // Long Press - Execute (hold)
       return i;
@@ -979,7 +928,7 @@ int navigateMenu(int min, int max, void (*printSelection)(int)) {
 int navigateMenu(__attribute__((unused)) int min, __attribute__((unused)) int max, void (*printSelection)(int)) {
   printSelection(0);
   Serial.println(F("Enter number to change:_"));
-  while (Serial.available() == 0) {}
+  while (Serial.available() == 0);
   int selectedNumber = Serial.parseInt();
   delay(200);
   return selectedNumber;
@@ -1057,12 +1006,10 @@ byte starting_letter() {
   return (selection + line * 7);
 #elif defined(SERIAL_MONITOR)
   Serial.println(F("Enter first letter: "));
-  while (Serial.available() == 0) {
-  }
+  while (Serial.available() == 0);
 
   // Read the incoming byte:
-  byte incomingByte = Serial.read();
-  return incomingByte;
+  return Serial.read();
 #endif
 
 #ifdef ENABLE_GLOBAL_LOG
@@ -3152,21 +3099,10 @@ void checkUpdater() {
 *****************************************/
 // Using Serial Monitor
 #if defined(ENABLE_SERIAL)
-int8_t checkButton2();
-uint8_t checkButton() {
-  int8_t result;
-  do {
-    result = checkButton2();
-  } while (result == -1);
 
-  // checkButton2 doesn't return a negative number other than -1, which we
-  // check for above
-  return static_cast<uint8_t>(result);
-}
-
-int8_t checkButton2() {
+int8_t checkButton() {
   if (Serial.available() == 0) {
-    return -1;
+    return 0;
   }
 
   // read() can't return -1 since there's data available.
@@ -3193,8 +3129,8 @@ void wait_serial() {
   if (errorLvl) {
     errorLvl = 0;
   }
-  while (Serial.available() == 0) {
-  }
+  while (Serial.available() == 0);
+
   // Result is ignored, so don't even bother putting it in a variable
   Serial.read();
 }
@@ -3372,6 +3308,14 @@ uint8_t checkButton() {
   int newPos = encoder.getPosition();
   // Read button
   boolean button = (PING & (1 << PING2)) >> PING2;
+  static unsigned long buttonPressTime = 0;
+  static unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+
+  // Button debounce
+  static boolean buttonState = HIGH;          // the current reading from the input pin
+  static boolean lastButtonState = HIGH;      // the previous reading from the input pin
+
+  static unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
   // Check if rotary encoder has changed
   if (rotaryPos != newPos) {
@@ -3390,11 +3334,12 @@ uint8_t checkButton() {
       buttonState = button;
       // Button was pressed down
       if (buttonState == 0) {
+        buttonPressTime = millis();
         rgbLed(black_color);
         return 0;
       } else {
         // Signal long press delay reached
-        if ((millis() - lastDebounceTime) > 2000) {
+        if ((millis() - buttonPressTime) > 2000) {
           return 4;
         }
         // normal press
@@ -3405,7 +3350,7 @@ uint8_t checkButton() {
     }
   }
   // Update color for long press (FIXME what's the chance of millis wrapping?)
-  if ((millis() - lastDebounceTime) > 2000 && buttonState == 0) {
+  if ((millis() - buttonPressTime) > 2000 && buttonState == 0) {
     rgbLed(green_color);
   }
   return 0;
