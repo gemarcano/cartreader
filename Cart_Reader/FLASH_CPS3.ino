@@ -245,7 +245,7 @@ void flashromCPS_Cartridge() {
 
 // CPS3 Cartridge region patch menu
 void cpsCartRegionMenu() {
-  cartRegion = pageMenu(F("Cartridge Region Patch"), menuOptionsCartRegion, 10);
+  cartRegion = question_box(F("Cartridge Region Patch"), reinterpret_cast<const __FlashHelperString*const*>(menuOptionsCartRegion), 10);
   if (cartRegion < 9) {
     display_Clear();
     display_Update();

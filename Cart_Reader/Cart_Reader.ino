@@ -85,7 +85,7 @@ bool dont_log = false;
 template<class T> int EEPROM_writeAnything(int ee, const T& value);
 template<class T> int EEPROM_readAnything(int ee, T& value);
 template<class T>
-unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice);
+unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice = 0);
 
 // Graphic SPI LCD
 #ifdef ENABLE_LCD
@@ -114,6 +114,7 @@ int rotaryPos = 0;
 Adafruit_NeoPixel pixels(3, 13, NEO_GRB + NEO_KHZ800);
 #endif
 
+/* FIXME need a header for this, currently in menu.h
 typedef enum COLOR_T {
   blue_color,
   red_color,
@@ -123,7 +124,7 @@ typedef enum COLOR_T {
   yellow_color,
   white_color,
   black_color,
-} color_t;
+} color_t;*/
 
 // Graphic I2C OLED
 #ifdef ENABLE_OLED
@@ -1208,83 +1209,12 @@ static const char* const modeOptions[] PROGMEM = {
 
 };
 
-template<class T>
-class list_menu_controller {
-public:
-  list_menu_controller(list_menu<T>& model)
-  :model(model), idle_time(millis())
-  {}
 
-  bool tick();
-
-private:
-  list_menu<T>& model;
-  unsigned long idle_time;
-};
-
-
-template<class T>
-uint8_t pageMenu(const __FlashStringHelper* question, const T* menuStrings, uint8_t entryCount, uint8_t default_choice = 0) {
-  // Create menu
-  uint8_t modeMenu;
-  uint8_t num_answers;
-  uint8_t option_offset;
-
-  // Menu spans across multiple pages
-  currPage = 1;
-  lastPage = 1;
-
-  numPages = (entryCount / 7) + ((entryCount % 7) != 0);
-
-  list_menu<T> menu(display2, question, menuStrings, entryCount, default_choice);
-  list_menu_controller<T> control(menu);
-  while (!control.tick());
-
-  // Reset page number
-  currPage = 1;
-
-  return menu.get_choice();
-}
-
-/*
-class page_menu {
-public:
-  page_menu() {
-    // Create menu
-    uint8_t modeMenu;
-    uint8_t num_answers;
-    uint8_t option_offset;
-
-    // Menu spans across multiple pages
-    currPage = 1;
-    lastPage = 1;
-
-    numPages = (entryCount / 7) + ((entryCount % 7) != 0);
-
-    do {
-      option_offset = (currPage - 1) * 7;
-      num_answers = ((entryCount < (option_offset + 7)) ? entryCount - option_offset : 7);
-
-      // Copy menuOptions out of progmem
-      convertPgm(menuStrings + option_offset, num_answers);
-      modeMenu = question_box(question, menuOptions, num_answers, default_choice) + option_offset;
-    } while (numPages != 0);
-
-    // Reset page number
-    currPage = 1;
-
-    return modeMenu;
-  }
-
-private:
-  uint8_t currPage;
-  uint8_t lastPage;
-};*/
 
 // All included slots
 void mainMenu() {
   // wait for user choice to come back from the question box menu
-  switch (pageMenu(F("OPEN SOURCE CART READER"), reinterpret_cast<const __FlashStringHelper*const*>(modeOptions), SYSTEM_MENU_TOTAL)) {
+  switch (question_box(F("OPEN SOURCE CART READER"), reinterpret_cast<const __FlashStringHelper*const*>(modeOptions), SYSTEM_MENU_TOTAL)) {
 
 #ifdef ENABLE_GBX
     case SYSTEM_MENU_GBX:
@@ -2977,174 +2907,25 @@ byte question_box(const __FlashStringHelper* question __attribute__((unused)), c
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
 template<class T>
 unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice) {
-  // change the rgb led to the start menu color
-  rgbLed(default_choice);
+  // Create menu
+  // Menu spans across multiple pages
+  currPage = 1;
+  lastPage = 1;
 
-  list_menu<T> q_box{display2, question, answers, num_answers, default_choice};
+  numPages = (num_answers / 7) + ((num_answers % 7) != 0);
 
-  unsigned long idleTime = millis();
-  byte currentColor = 0;
-  choice = default_choice;
-
-  // wait until user makes his choice
-  while (1) {
-    // Attract Mode
-    if (millis() - idleTime > 300000) {
-      if ((millis() - idleTime) % 4000 == 0) {
-        if (currentColor < 5) {
-          currentColor++;
-          if (currentColor == 1) {
-            currentColor = 2;  // skip red as that signifies an error to the user
-          }
-        } else {
-          currentColor = 0;
-        }
-        rgbLed(currentColor);
-      }
-    }
-
-    /* Check Button/rotary encoder
-      1 click/clockwise rotation
-      2 doubleClick/counter clockwise rotation
-      3 hold/press
-      4 longHold */
-    uint8_t b = checkButton();
-
-    // if button is pressed twice or rotary encoder turned left/counter clockwise
-    if (b == 2) {
-      idleTime = millis();
-
-      // If cursor on top list entry
-      if (choice == 0) {
-        // On 2nd, 3rd, ... page go back one page
-        if (currPage > 1) {
-          lastPage = currPage;
-          currPage--;
-          break;
-        }
-        // In file browser go to root dir
-        else if ((filebrowse == 1) && (root != 1)) {
-          root = 1;
-          break;
-        }
-        // Else go to bottom of list as a shortcut
-        else {
-          choice = num_answers - 1;
-        }
-      }
-      // If not top entry go up/back one entry
-      else {
-        choice--;
-      }
-
-      q_box.update(choice);
-
-      // change RGB led to the color of the current menu option
-      rgbLed(choice);
-    }
-
-    // go one down in the menu if the Cart Readers button is clicked shortly
-    if (b == 1) {
-      idleTime = millis();
-
-      if ((choice == num_answers - 1) && (numPages > currPage)) {
-        lastPage = currPage;
-        currPage++;
-        break;
-      } else
-        choice = (choice + 1) % num_answers;
-
-        q_box.update(choice);
-
-      // change RGB led to the color of the current menu option
-      rgbLed(choice);
-    }
-
-    // if the Cart Readers button is hold continiously leave the menu
-    // so the currently highlighted action can be executed
-
-    if (b == 3 || b == 4) {
-      idleTime = millis();
-      // All done
-      numPages = 0;
-      break;
-    }
-
+  list_menu<T> menu(display2, question, answers, num_answers, default_choice);
+  list_menu_controller<T> control(menu);
+  while (!control.tick()) {
     checkUpdater();
   }
 
-  // pass on user choice
-  rgbLed(black_color);
+  // Reset page number
+  currPage = 1;
 
-#ifdef ENABLE_GLOBAL_LOG
-  println_Msg(FS(FSTRING_EMPTY));
-  print_Msg(F("[+] "));
-  println_Msg(answers[choice]);
-#endif
-
-  return choice;
+  return menu.get_choice();
 }
 
-
-template<class T>
-bool list_menu_controller<T>::tick() {
-  // change the rgb led to the start menu color
-  rgbLed(model.get_choice());
-
-  byte currentColor = model.get_choice();
-
-  /* Check Button/rotary encoder
-  1 click/clockwise rotation
-  2 doubleClick/counter clockwise rotation
-  3 hold/press
-  4 longHold */
-  uint8_t b = checkButton();
-
-  if (millis() - idle_time > 300000) {
-    if ((millis() - idle_time) % 4000 == 0) {
-      if (currentColor < 5) {
-        currentColor++;
-        if (currentColor == 1) {
-          currentColor = 2;  // skip red as that signifies an error to the user
-        }
-      } else {
-        currentColor = 0;
-      }
-      rgbLed(currentColor);
-    }
-  }
-
-  if (!b)
-    return false;
-
-  idle_time = millis();
-
-  byte choice = model.get_choice();
-  // if button is pressed twice or rotary encoder turned left/counter clockwise
-  if (b == 2) {
-    if (choice == 0) {
-      choice = model.max_choices() - 1;
-    } else {
-      choice--;
-    }
-    model.update(choice);
-  }
-  // go one down in the menu if the Cart Readers button is clicked shortly
-  if (b == 1) {
-    choice = (choice + 1) % model.max_choices();
-    model.update(choice);
-  }
-  // if the Cart Readers button is hold continiously leave the menu
-  // so the currently highlighted action can be executed
-
-  if (b == 3 || b == 4) {
-    rgbLed(black_color);
-    return true;
-  }
-
-  rgbLed(model.get_choice());
-  return false;
-}
 #endif
 
 void checkUpdater() {
@@ -3406,44 +3187,54 @@ void wait_btn() {
 // Using rotary encoder (HW4/HW5)
 #if (defined(ENABLE_LCD) && defined(ENABLE_ROTARY))
 
-uint8_t checkButton() {
-  // Read rotary encoder
-  encoder.tick();
-  int newPos = encoder.getPosition();
-  // Read button
-  boolean button = (PING & (1 << PING2)) >> PING2;
-  static unsigned long buttonPressTime = 0;
-  static unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+class input {
+public:
+  input(RotaryEncoder& encoder)
+  :encoder(encoder), rotary_position(encoder.getPosition()),
+    previous_rotary_position(rotary_position), rotary_direction(1),
+    previous_rotary_direction(1), button(read_button()),
+    previous_button(button), button_press_time(millis()), debounce_time(0)
+  {}
 
-  // Button debounce
-  static boolean buttonState = HIGH;          // the current reading from the input pin
-  static boolean lastButtonState = HIGH;      // the previous reading from the input pin
+  void tick()
+  {
+    previous_rotary_position = rotary_position;
+    previous_rotary_direction = rotary_direction;
+    previous_button = button;
+    encoder.tick();
+    button = read_debounce_button();
+    rotary_position = encoder.getPosition();
+    rotary_direction = static_cast<uint8_t>(encoder.getDirection());
 
-  static unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-
-  // Check if rotary encoder has changed
-  if (rotaryPos != newPos) {
-    int rotaryDir = (int)encoder.getDirection();
-    rotaryPos = newPos;
-    if (rotaryDir == 1) {
-      return 1;
-    } else if (rotaryDir == -1) {
-      return 2;
+    if (button && (previous_button != button)) {
+      button_press_time = millis();
     }
-  } else if (button != buttonState) {
-    if (button != lastButtonState) {
-      lastDebounceTime = millis();
-      lastButtonState = button;
-    } else if ((millis() - lastDebounceTime) > debounceDelay) {
-      buttonState = button;
-      // Button was pressed down
-      if (buttonState == 0) {
-        buttonPressTime = millis();
+  }
+
+  bool get_button() const {
+    return button;
+  }
+
+  long get_rotary_position() const {
+    return rotary_position;
+  }
+
+  uint8_t current_input_event() {
+    // Check if rotary encoder has changed
+    if (rotary_position != previous_rotary_position) {
+      if (rotary_direction == 1) {
+        return 1;
+      } else if (rotary_direction == -1) {
+        return 2;
+      }
+    } else if (button != previous_button) {
+      if (button == 0) {
+        button_press_time = millis();
         rgbLed(black_color);
         return 0;
       } else {
         // Signal long press delay reached
-        if ((millis() - buttonPressTime) > 2000) {
+        if ((millis() - button_press_time) > 2000) {
           return 4;
         }
         // normal press
@@ -3452,12 +3243,53 @@ uint8_t checkButton() {
         }
       }
     }
+
+    // Update color for long press (FIXME what's the chance of millis wrapping?)
+    if ((millis() - button_press_time) > 2000 && button == 0) {
+      rgbLed(green_color);
+    }
+    return 0;
   }
-  // Update color for long press (FIXME what's the chance of millis wrapping?)
-  if ((millis() - buttonPressTime) > 2000 && buttonState == 0) {
-    rgbLed(green_color);
+
+private:
+  RotaryEncoder& encoder;
+  long rotary_position;
+  long previous_rotary_position;
+  int8_t rotary_direction;
+  int8_t previous_rotary_direction;
+  bool button;
+  bool previous_button;
+  unsigned long button_press_time;
+
+  bool debounce_button;
+  unsigned long debounce_time;
+
+  bool read_debounce_button() {
+
+    constexpr const unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+    bool real_button = read_button();
+    if (real_button != previous_button) {
+      if (real_button != debounce_button) {
+        debounce_time = millis();
+        debounce_button = real_button;
+      } else if ((millis() - debounce_time) > debounceDelay) {
+        button = real_button;
+      }
+    }
+    return button;
   }
-  return 0;
+
+  static bool read_button() {
+    return (PING & (1 << PING2)) >> PING2;
+  }
+};
+
+input rotary_input(encoder);
+
+uint8_t checkButton() {
+  // Read rotary encoder
+  rotary_input.tick();
+  return rotary_input.current_input_event();
 }
 
 // Wait for user to push button
@@ -3485,25 +3317,6 @@ void wait_btn() {
     }
 
     checkUpdater();
-  }
-}
-
-// Wait for user to rotate knob
-void wait_encoder() {
-  // Change led to green
-  if (errorLvl == 0)
-    rgbLed(green_color);
-
-  while (1) {
-    // Get rotary encoder
-    encoder.tick();
-    int newPos = encoder.getPosition();
-
-    if (rotaryPos != newPos) {
-      rotaryPos = newPos;
-      errorLvl = 0;
-      break;
-    }
   }
 }
 #endif

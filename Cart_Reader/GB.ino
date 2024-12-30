@@ -86,8 +86,8 @@ void gbxMenu() {
   // create menu with title and 5 options to choose from
   unsigned char gbType;
   // Copy menuOptions out of progmem
-  convertPgm(menuOptionsGBx, 7);
-  gbType = question_box(F("Select Game Boy"), menuOptions, 7, 0);
+  //convertPgm(menuOptionsGBx, 7);
+  gbType = question_box(F("Select Game Boy"), reinterpret_cast<const __FlashStringHelper*const*>(menuOptionsGBx), 7, 0);
 
   // wait for user choice to come back from the question box menu
   switch (gbType) {
