@@ -8,9 +8,9 @@
 #include <U8g2lib.h>
 
 template<class T=char[20]>
-class question_box2 {
+class list_menu {
 public:
-  question_box2(screen_display& display, const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice)
+  list_menu(screen_display& display, const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice)
   :question(question), choice(default_choice), prompts(answers), num_prompts(num_answers), display(display)
   {
     draw();
@@ -18,6 +18,13 @@ public:
 
   void draw();
   void update(uint8_t choice);
+
+  uint8_t get_choice() const {
+    return choice;
+  }
+  uint8_t max_choices() const {
+    return num_prompts;
+  }
 private:
 
   const __FlashStringHelper* question;
@@ -26,8 +33,6 @@ private:
 	uint8_t num_prompts;
 
   screen_display& display;
-
-
 
   template<class T2>
   void print_loop(const T2* prompts, unsigned char start, unsigned char count)
@@ -51,10 +56,8 @@ private:
   }
 };
 
-
-
 template<class T>
-void question_box2<T>::draw() {
+void list_menu<T>::draw() {
   //clear the screen
   display.clear();
   display.set_color(draw_color::NORMAL);
@@ -64,7 +67,7 @@ void question_box2<T>::draw() {
   uint8_t current_page = choice / 7; // Max 7 options per page
   uint8_t prompts_on_page = min(7, num_prompts - current_page * 7);
 
-  print_loop(prompts, current_page * 7, prompts_on_page);
+  print_loop(prompts, current_page * 7, current_page * 7 + prompts_on_page);
 
   // draw selection box
   display.get_display().drawBox(1, 8 * (choice % 7) + 11, 3, 3);
@@ -72,7 +75,7 @@ void question_box2<T>::draw() {
 }
 
 template<class T>
-void question_box2<T>::update(uint8_t new_choice) {
+void list_menu<T>::update(uint8_t new_choice) {
   if (new_choice == choice) {
     return;
   }
@@ -84,6 +87,7 @@ void question_box2<T>::update(uint8_t new_choice) {
   uint8_t new_page = new_choice / 7;
   if (current_page != new_page) {
     // We need to redraw everything...
+    choice = new_choice;
     draw();
   } else {
     // remove selection box

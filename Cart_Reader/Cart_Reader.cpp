@@ -49,7 +49,7 @@ void screen_display::update() {
 }
 
 void screen_display::clear() {
-  display.clearDisplay();
+  display.clearBuffer();
   display.setCursor(0, 8);
 }
 

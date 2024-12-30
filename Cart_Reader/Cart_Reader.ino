@@ -87,17 +87,6 @@ template<class T> int EEPROM_readAnything(int ee, T& value);
 template<class T>
 unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice);
 
-#if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
-// Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
-template<class T>
-unsigned char questionBox_Display(const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice);
-#endif
-
-#if defined(ENABLE_SERIAL)
-template<class T>
-unsigned char questionBox_Serial(const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice);
-#endif
-
 // Graphic SPI LCD
 #ifdef ENABLE_LCD
 #include <U8g2lib.h>
@@ -1220,6 +1209,21 @@ static const char* const modeOptions[] PROGMEM = {
 };
 
 template<class T>
+class list_menu_controller {
+public:
+  list_menu_controller(list_menu<T>& model)
+  :model(model), idle_time(millis())
+  {}
+
+  bool tick();
+
+private:
+  list_menu<T>& model;
+  unsigned long idle_time;
+};
+
+
+template<class T>
 uint8_t pageMenu(const __FlashStringHelper* question, const T* menuStrings, uint8_t entryCount, uint8_t default_choice = 0) {
   // Create menu
   uint8_t modeMenu;
@@ -1232,23 +1236,55 @@ uint8_t pageMenu(const __FlashStringHelper* question, const T* menuStrings, uint
 
   numPages = (entryCount / 7) + ((entryCount % 7) != 0);
 
-  do {
-    option_offset = (currPage - 1) * 7;
-    num_answers = ((entryCount < (option_offset + 7)) ? entryCount - option_offset : 7);
-
-    modeMenu = question_box(question, reinterpret_cast<const __FlashStringHelper*const *>(menuStrings + option_offset), num_answers, default_choice) + option_offset;
-  } while (numPages != 0);
+  list_menu<T> menu(display2, question, menuStrings, entryCount, default_choice);
+  list_menu_controller<T> control(menu);
+  while (!control.tick());
 
   // Reset page number
   currPage = 1;
 
-  return modeMenu;
+  return menu.get_choice();
 }
+
+/*
+class page_menu {
+public:
+  page_menu() {
+    // Create menu
+    uint8_t modeMenu;
+    uint8_t num_answers;
+    uint8_t option_offset;
+
+    // Menu spans across multiple pages
+    currPage = 1;
+    lastPage = 1;
+
+    numPages = (entryCount / 7) + ((entryCount % 7) != 0);
+
+    do {
+      option_offset = (currPage - 1) * 7;
+      num_answers = ((entryCount < (option_offset + 7)) ? entryCount - option_offset : 7);
+
+      // Copy menuOptions out of progmem
+      convertPgm(menuStrings + option_offset, num_answers);
+      modeMenu = question_box(question, menuOptions, num_answers, default_choice) + option_offset;
+    } while (numPages != 0);
+
+    // Reset page number
+    currPage = 1;
+
+    return modeMenu;
+  }
+
+private:
+  uint8_t currPage;
+  uint8_t lastPage;
+};*/
 
 // All included slots
 void mainMenu() {
   // wait for user choice to come back from the question box menu
-  switch (pageMenu(F("OPEN SOURCE CART READER"), modeOptions, SYSTEM_MENU_TOTAL)) {
+  switch (pageMenu(F("OPEN SOURCE CART READER"), reinterpret_cast<const __FlashStringHelper*const*>(modeOptions), SYSTEM_MENU_TOTAL)) {
 
 #ifdef ENABLE_GBX
     case SYSTEM_MENU_GBX:
@@ -2886,20 +2922,11 @@ void statusLED(boolean on __attribute__((unused))) {
 /******************************************
   Menu system
 *****************************************/
-template<class T>
-unsigned char question_box(const __FlashStringHelper* question, const T* answers, uint8_t num_answers, uint8_t default_choice) {
-#if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
-  return questionBox_Display(question, answers, num_answers, default_choice);
-#endif
-#ifdef ENABLE_SERIAL
-  return questionBox_Serial(question, answers, num_answers, default_choice);
-#endif
-}
 
 #if defined(ENABLE_SERIAL)
 // Serial Monitor
 template<class T>
-byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unused)), const T* answers, uint8_t num_answers, uint8_t default_choice __attribute__((unused))) {
+byte question_box(const __FlashStringHelper* question __attribute__((unused)), const T* answers, uint8_t num_answers, uint8_t default_choice __attribute__((unused))) {
   // Print menu to serial monitor
   Serial.println(FS(FSTRING_EMPTY));
   for (byte i = 0; i < num_answers; i++) {
@@ -2941,9 +2968,6 @@ byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unuse
     numPages = 0;
   }
 
-  // Print the received byte for validation e.g. in case of a different keyboard mapping
-  //Serial.println(incomingByte);
-  //Serial.println(FS(FSTRING_EMPTY));
   return incomingByte - '0';
 }
 #endif
@@ -2952,11 +2976,11 @@ byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unuse
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
 template<class T>
-unsigned char questionBox_Display(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice) {
+unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice) {
   // change the rgb led to the start menu color
   rgbLed(default_choice);
 
-  question_box2<T> q_box{display2, question, answers, num_answers, default_choice};
+  list_menu<T> q_box{display2, question, answers, num_answers, default_choice};
 
   unsigned long idleTime = millis();
   byte currentColor = 0;
@@ -3059,6 +3083,67 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, const T *
 #endif
 
   return choice;
+}
+
+
+template<class T>
+bool list_menu_controller<T>::tick() {
+  // change the rgb led to the start menu color
+  rgbLed(model.get_choice());
+
+  byte currentColor = model.get_choice();
+
+  /* Check Button/rotary encoder
+  1 click/clockwise rotation
+  2 doubleClick/counter clockwise rotation
+  3 hold/press
+  4 longHold */
+  uint8_t b = checkButton();
+
+  if (millis() - idle_time > 300000) {
+    if ((millis() - idle_time) % 4000 == 0) {
+      if (currentColor < 5) {
+        currentColor++;
+        if (currentColor == 1) {
+          currentColor = 2;  // skip red as that signifies an error to the user
+        }
+      } else {
+        currentColor = 0;
+      }
+      rgbLed(currentColor);
+    }
+  }
+
+  if (!b)
+    return false;
+
+  idle_time = millis();
+
+  byte choice = model.get_choice();
+  // if button is pressed twice or rotary encoder turned left/counter clockwise
+  if (b == 2) {
+    if (choice == 0) {
+      choice = model.max_choices() - 1;
+    } else {
+      choice--;
+    }
+    model.update(choice);
+  }
+  // go one down in the menu if the Cart Readers button is clicked shortly
+  if (b == 1) {
+    choice = (choice + 1) % model.max_choices();
+    model.update(choice);
+  }
+  // if the Cart Readers button is hold continiously leave the menu
+  // so the currently highlighted action can be executed
+
+  if (b == 3 || b == 4) {
+    rgbLed(black_color);
+    return true;
+  }
+
+  rgbLed(model.get_choice());
+  return false;
 }
 #endif
 
