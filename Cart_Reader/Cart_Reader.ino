@@ -84,6 +84,19 @@ bool dont_log = false;
 // forward declarations for "T" (for non Arduino IDE)
 template<class T> int EEPROM_writeAnything(int ee, const T& value);
 template<class T> int EEPROM_readAnything(int ee, T& value);
+template<class T>
+unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice);
+
+#if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
+// Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
+template<class T>
+unsigned char questionBox_Display(const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice);
+#endif
+
+#if defined(ENABLE_SERIAL)
+template<class T>
+unsigned char questionBox_Serial(const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice);
+#endif
 
 // Graphic SPI LCD
 #ifdef ENABLE_LCD
@@ -1206,7 +1219,8 @@ static const char* const modeOptions[] PROGMEM = {
 
 };
 
-uint8_t pageMenu(const __FlashStringHelper* question, const char* const* menuStrings, uint8_t entryCount, uint8_t default_choice = 0) {
+template<class T>
+uint8_t pageMenu(const __FlashStringHelper* question, const T* menuStrings, uint8_t entryCount, uint8_t default_choice = 0) {
   // Create menu
   uint8_t modeMenu;
   uint8_t num_answers;
@@ -1222,9 +1236,7 @@ uint8_t pageMenu(const __FlashStringHelper* question, const char* const* menuStr
     option_offset = (currPage - 1) * 7;
     num_answers = ((entryCount < (option_offset + 7)) ? entryCount - option_offset : 7);
 
-    // Copy menuOptions out of progmem
-    convertPgm(menuStrings + option_offset, num_answers);
-    modeMenu = question_box(question, menuOptions, num_answers, default_choice) + option_offset;
+    modeMenu = question_box(question, reinterpret_cast<const __FlashStringHelper*const *>(menuStrings + option_offset), num_answers, default_choice) + option_offset;
   } while (numPages != 0);
 
   // Reset page number
@@ -2417,6 +2429,10 @@ byte buildRomName(char* output, const byte* input, byte length) {
 
 // Converts a progmem array into a ram array
 void convertPgm(const char* const pgmOptions[], byte numArrays) {
+  // limit numArrays to max entries of menuOptions
+  if (numArrays > 7) {
+    numArrays = 7;
+  }
   for (int i = 0; i < numArrays; i++) {
     strlcpy_P(menuOptions[i], (char*)pgm_read_word(&(pgmOptions[i])), 20);
   }
@@ -2870,7 +2886,8 @@ void statusLED(boolean on __attribute__((unused))) {
 /******************************************
   Menu system
 *****************************************/
-unsigned char question_box(const __FlashStringHelper* question, char answers[7][20], uint8_t num_answers, uint8_t default_choice) {
+template<class T>
+unsigned char question_box(const __FlashStringHelper* question, const T* answers, uint8_t num_answers, uint8_t default_choice) {
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
   return questionBox_Display(question, answers, num_answers, default_choice);
 #endif
@@ -2881,7 +2898,8 @@ unsigned char question_box(const __FlashStringHelper* question, char answers[7][
 
 #if defined(ENABLE_SERIAL)
 // Serial Monitor
-byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unused)), char answers[7][20], uint8_t num_answers, uint8_t default_choice __attribute__((unused))) {
+template<class T>
+byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unused)), const T* answers, uint8_t num_answers, uint8_t default_choice __attribute__((unused))) {
   // Print menu to serial monitor
   Serial.println(FS(FSTRING_EMPTY));
   for (byte i = 0; i < num_answers; i++) {
@@ -2933,11 +2951,12 @@ byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unuse
 // OLED & LCD
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
-unsigned char questionBox_Display(const __FlashStringHelper* question, char answers[7][20], uint8_t num_answers, uint8_t default_choice) {
+template<class T>
+unsigned char questionBox_Display(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice) {
   // change the rgb led to the start menu color
   rgbLed(default_choice);
 
-  question_box2 q_box{display2, question, answers, num_answers, default_choice};
+  question_box2<T> q_box{display2, question, answers, num_answers, default_choice};
 
   unsigned long idleTime = millis();
   byte currentColor = 0;
