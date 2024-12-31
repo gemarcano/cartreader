@@ -7,30 +7,55 @@
 #include <avr/io.h>
 #include <U8g2lib.h>
 
+class menu {
+public:
+  menu(uint8_t max_choices_, uint8_t default_choice)
+  :max_choices_(max_choices_), choice(default_choice)
+  {}
+
+  virtual ~menu() = 0;
+  virtual void draw() = 0;
+
+  virtual void update(uint8_t choice_) {
+    choice = choice_;
+  }
+
+  virtual uint8_t get_choice() const
+  {
+    return choice;
+  }
+  virtual uint8_t max_choices() const
+  {
+    return max_choices_;
+  }
+
+private:
+  const uint8_t max_choices_;
+  uint8_t choice;
+};
+
+menu::~menu()
+{}
+
 template<class T>
-class list_menu {
+class list_menu : public menu {
 public:
   list_menu(screen_display& display, const __FlashStringHelper* question, const T answers[], uint8_t num_answers, uint8_t default_choice)
-  :question(question), choice(default_choice), prompts(answers), num_prompts(num_answers), display(display)
+  :menu(num_answers, default_choice), question(question), prompts(answers), display(display)
   {
     draw();
   }
 
-  void draw();
-  void update(uint8_t choice);
+  virtual ~list_menu()
+  {}
 
-  uint8_t get_choice() const {
-    return choice;
-  }
-  uint8_t max_choices() const {
-    return num_prompts;
-  }
+  virtual void draw() override;
+  virtual void update(uint8_t choice) override;
+
 private:
 
   const __FlashStringHelper* question;
-	uint8_t choice;
   const T* prompts;
-	uint8_t num_prompts;
 
   screen_display& display;
 
@@ -64,41 +89,42 @@ void list_menu<T>::draw() {
 
   // print menu
   display.println(question);
-  uint8_t current_page = choice / 7; // Max 7 options per page
-  uint8_t prompts_on_page = min(7, num_prompts - current_page * 7);
+  uint8_t current_page = get_choice() / 7; // Max 7 options per page
+  uint8_t prompts_on_page = min(7, max_choices() - current_page * 7);
 
   print_loop(prompts, current_page * 7, current_page * 7 + prompts_on_page);
 
   // draw selection box
-  display.get_display().drawBox(1, 8 * (choice % 7) + 11, 3, 3);
+  display.get_display().drawBox(1, 8 * (get_choice() % 7) + 11, 3, 3);
   display.update();
 }
 
 template<class T>
 void list_menu<T>::update(uint8_t new_choice) {
-  if (new_choice == choice) {
+  uint8_t old_choice = get_choice();
+  if (new_choice == old_choice) {
     return;
   }
-  if (new_choice > num_prompts) {
-    new_choice = num_prompts;
+  if (new_choice > max_choices()) {
+    new_choice = max_choices();
   }
 
-  uint8_t current_page = choice / 7; // Max 7 options per page
+  uint8_t current_page = old_choice / 7; // Max 7 options per page
   uint8_t new_page = new_choice / 7;
+  
+  // We've cached the old choice, we can update now
+  menu::update(new_choice);
   if (current_page != new_page) {
     // We need to redraw everything...
-    choice = new_choice;
     draw();
   } else {
     // remove selection box
     display.set_color(draw_color::INVERTED);
-    display.get_display().drawBox(1, 8 * (choice % 7) + 11, 3, 3);
+    display.get_display().drawBox(1, 8 * (old_choice % 7) + 11, 3, 3);
     display.set_color(draw_color::NORMAL);
-    
-    choice = new_choice;
 
     // draw selection box
-    display.get_display().drawBox(1, 8 * (choice % 7) + 11, 3, 3);
+    display.get_display().drawBox(1, 8 * (new_choice % 7) + 11, 3, 3);
     display.update();
   }
 }
