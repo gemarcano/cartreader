@@ -2926,6 +2926,27 @@ unsigned char question_box(const __FlashStringHelper* question, const T *answers
   return menu.get_choice();
 }
 
+unsigned char question_box(const __FlashStringHelper* question, const char* answers, uint8_t answers_size, uint8_t default_choice) {
+  // Create menu
+  // Menu spans across multiple pages
+  currPage = 1;
+  lastPage = 1;
+
+  numPages = (num_answers / 7) + ((num_answers % 7) != 0);
+
+  list_menu<T> menu(display2, question, answers, num_answers, default_choice);
+  list_menu_controller<T> control(menu);
+  while (!control.tick()) {
+    checkUpdater();
+  }
+
+  // Reset page number
+  currPage = 1;
+
+  return menu.get_choice();
+}
+
+
 #endif
 
 void checkUpdater() {
@@ -3324,9 +3345,61 @@ void wait_btn() {
 /******************************************
   Filebrowser Module
 *****************************************/
+
+static uint16_t count_in_directory(const char *dir_path)
+{
+  FsFile dir;
+  // Open filepath directory
+  if (!dir.open(dir_path)) {
+    display_Clear();
+    print_FatalError(sd_error_STR);
+  }
+
+  // Count files in directory (openNext closes the current file automatically)
+  FsFile file;
+  uint16_t result = 0;
+  while (file.openNext(&dir, O_READ)) {
+    result += !file.isHidden() && file.isFileOrSubDir();
+  }
+  file.close();
+  dir.close();
+  return result;
+}
+
+uint8_t retrieve_names(char *names, size_t names_size, FsFile& dir, uint8_t start, uint8_t count) {
+  byte i = 0;
+  size_t stored = 0;
+  // Cycle through all files, loading the names into filenNames[7]
+  // Only the ones in the current page are loaded, all prior ones,
+  // and hidden files/directories are skipped
+  FsFile file;
+  while (stored != (names_size - 1) && file.openNext(&dir, O_READ) && (i < count)) {
+    ClockedSerial.println("loop");
+    // Ignore if hidden
+    if (file.isHidden() && !file.isFileOrSubDir()) {
+      continue;
+    }
+
+    if (start) {
+      start--;
+      continue;
+    }
+    
+    // If we're here, the  file must be a file or subdir
+    char nameStr[FILENAME_LENGTH];
+    size_t size = file.getName(nameStr, FILENAME_LENGTH);
+    // Add / following a directory name
+    
+    size_t space_left = names_size - stored - 1;
+    snprintf(names + stored, space_left, file.isDir() ? "%s/" : "%s", nameStr);
+    stored += min(size + 1, space_left);
+    i++;
+  }
+
+  return i;
+}
+
 void fileBrowser(const __FlashStringHelper* browserTitle) {
-  char fileNames[7][FILENAME_LENGTH];
-  int currFile;
   FsFile myDir;
   div_t page_layout;
 
@@ -3336,44 +3409,18 @@ void fileBrowser(const __FlashStringHelper* browserTitle) {
   filePath[0] = '/';
   filePath[1] = '\0';
 
-  // Temporary char array for filename
-  char nameStr[FILENAME_LENGTH];
-
 browserstart:
 
-  // Print title
-  println_Msg(browserTitle);
-
-  // Set currFile back to 0
-  currFile = 0;
   currPage = 1;
   lastPage = 1;
 
-  // Open filepath directory
-  if (!myDir.open(filePath)) {
-    display_Clear();
-    print_FatalError(sd_error_STR);
-  }
-
-  // Count files in directory
-  while (myFile.openNext(&myDir, O_READ)) {
-    if (!myFile.isHidden() && (myFile.isDir() || myFile.isFile())) {
-      currFile++;
-    }
-    myFile.close();
-  }
-  myDir.close();
-
-  page_layout = div(currFile, 7);
+  page_layout = div(count_in_directory(filePath), 16);
   numPages = page_layout.quot + 1;
-
-  // Fill the array "answers" with 7 options to choose from in the file browser
-  char answers[7][20];
 
 page:
 
-  // If there are less than 7 entries, set count to that number so no empty options appear
-  byte count = currPage == numPages ? page_layout.rem : 7;
+  // If the last page has less than 7 entries, set count to that number so no empty options appear
+  byte count = currPage == numPages ? page_layout.rem : 16;
 
   // Open filepath directory
   if (!myDir.open(filePath)) {
@@ -3381,43 +3428,13 @@ page:
     print_FatalError(sd_error_STR);
   }
 
-  int countFile = 0;
-  byte i = 0;
-  // Cycle through all files
-  while ((myFile.openNext(&myDir, O_READ)) && (i < 8)) {
-    // Get name of file
-    myFile.getName(nameStr, FILENAME_LENGTH);
-
-    // Ignore if hidden
-    if (myFile.isHidden()) {
-    }
-    // Directory
-    else if (myFile.isDir()) {
-      if (countFile == ((currPage - 1) * 7 + i)) {
-        snprintf(fileNames[i], FILENAME_LENGTH, "%s%s", "/", nameStr);
-        i++;
-      }
-      countFile++;
-    }
-    // File
-    else if (myFile.isFile()) {
-      if (countFile == ((currPage - 1) * 7 + i)) {
-        snprintf(fileNames[i], FILENAME_LENGTH, "%s", nameStr);
-        i++;
-      }
-      countFile++;
-    }
-    myFile.close();
-  }
+  // First entry is .. everywhere except root
+  char fileNames[16*FILENAME_LENGTH];
+  ClockedSerial.println(retrieve_names(fileNames, sizeof(fileNames), myDir, 0, UCHAR_MAX));
   myDir.close();
 
-  for (byte i = 0; i < 8; i++) {
-    // Copy short string into fileOptions
-    snprintf(answers[i], FILEOPTS_LENGTH, "%s", fileNames[i]);
-  }
-
   // Create menu with title and 1-7 options to choose from
-  unsigned char answer = question_box(browserTitle, answers, count, 0);
+  unsigned char answer = question_box(browserTitle, fileNames, count, 0);
 
   // Check if the page has been switched
   if (currPage != lastPage) {
