@@ -79,6 +79,21 @@ private:
       display.println((const __FlashStringHelper*const)pgm_read_word(&(prompts[i])));
     }
   }
+
+  void print_loop(const char*const prompts, unsigned char start, unsigned char count)
+  {
+    const char* current = prompts;
+    for (unsigned char i = 0; i < start; ++i) {
+      current += strlen(current) + 1;
+    }
+    for (unsigned char i = start; i < count; i++) {
+      // Add space for the selection dot
+      display.print("   ");
+      // Print menu item
+      display.println(current);
+      current += strlen(current) + 1;
+    }
+  }
 };
 
 template<class T>
