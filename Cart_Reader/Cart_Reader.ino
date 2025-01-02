@@ -91,7 +91,6 @@ unsigned char question_box(const __FlashStringHelper* question, const T *answers
 #ifdef ENABLE_LCD
 #include <U8g2lib.h>
 U8G2_ST7567_OS12864_F_4W_HW_SPI display(U8G2_R2, /* cs=*/12, /* dc=*/11, /* reset=*/10);
-screen_display display2(display);
 #endif
 
 // Rotary Encoder
@@ -105,6 +104,11 @@ RotaryEncoder encoder(PIN_IN2, PIN_IN1, RotaryEncoder::LatchMode::FOUR3);
 RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::FOUR3);
 #endif
 int rotaryPos = 0;
+#endif
+
+#if defined(ENABLE_LCD) && defined(ENABLE_ROTARY)
+screen_display display2(display);
+screen_input rotary_input(encoder);
 #endif
 
 // Choose RGB LED type
@@ -894,7 +898,7 @@ void printInstructions() {
 #elif defined(SERIAL_MONITOR)
   println_Msg(F("U/D to Change"));
   println_Msg(F("Space/Zero to Select"));
-#endif /* ENABLE_OLED | ENABLE_LCD | SERIAL_MONITOR */
+#endif /* ENABLE_OLED | ENABLE_LCD | SERIAL_MONITOR */checkButton
   display_Update();
 #ifdef ENABLE_GLOBAL_LOG
   // Enable log again
@@ -2914,8 +2918,9 @@ unsigned char question_box(const __FlashStringHelper* question, const T *answers
 
   numPages = (num_answers / 7) + ((num_answers % 7) != 0);
 
-  list_menu<T> menu(display2, question, answers, num_answers, default_choice);
-  list_menu_controller<T> control(menu);
+  menu<__FlashStringHelper, T> menu( question, answers, num_answers, default_choice);
+  list_menu_view<T> view(display2, menu);
+  list_menu_controller<T> control(menu, rotary_input, view);
   while (!control.tick()) {
     checkUpdater();
   }
@@ -3187,109 +3192,27 @@ void wait_btn() {
 // Using rotary encoder (HW4/HW5)
 #if (defined(ENABLE_LCD) && defined(ENABLE_ROTARY))
 
-class input {
-public:
-  input(RotaryEncoder& encoder)
-  :encoder(encoder), rotary_position(encoder.getPosition()),
-    previous_rotary_position(rotary_position), rotary_direction(1),
-    previous_rotary_direction(1), button(read_button()),
-    previous_button(button), button_press_time(millis()), debounce_time(0)
-  {}
-
-  void tick()
-  {
-    previous_rotary_position = rotary_position;
-    previous_rotary_direction = rotary_direction;
-    previous_button = button;
-    encoder.tick();
-    button = read_debounce_button();
-    rotary_position = encoder.getPosition();
-    rotary_direction = static_cast<uint8_t>(encoder.getDirection());
-
-    if (button && (previous_button != button)) {
-      button_press_time = millis();
-    }
-  }
-
-  bool get_button() const {
-    return button;
-  }
-
-  long get_rotary_position() const {
-    return rotary_position;
-  }
-
-  uint8_t current_input_event() {
-    // Check if rotary encoder has changed
-    if (rotary_position != previous_rotary_position) {
-      if (rotary_direction == 1) {
-        return 1;
-      } else if (rotary_direction == -1) {
-        return 2;
-      }
-    } else if (button != previous_button) {
-      if (button == 0) {
-        button_press_time = millis();
-        rgbLed(black_color);
-        return 0;
-      } else {
-        // Signal long press delay reached
-        if ((millis() - button_press_time) > 2000) {
-          return 4;
-        }
-        // normal press
-        else {
-          return 3;
-        }
-      }
-    }
-
-    // Update color for long press (FIXME what's the chance of millis wrapping?)
-    if ((millis() - button_press_time) > 2000 && button == 0) {
-      rgbLed(green_color);
-    }
-    return 0;
-  }
-
-private:
-  RotaryEncoder& encoder;
-  long rotary_position;
-  long previous_rotary_position;
-  int8_t rotary_direction;
-  int8_t previous_rotary_direction;
-  bool button;
-  bool previous_button;
-  unsigned long button_press_time;
-
-  bool debounce_button;
-  unsigned long debounce_time;
-
-  bool read_debounce_button() {
-
-    constexpr const unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-    bool real_button = read_button();
-    if (real_button != previous_button) {
-      if (real_button != debounce_button) {
-        debounce_time = millis();
-        debounce_button = real_button;
-      } else if ((millis() - debounce_time) > debounceDelay) {
-        button = real_button;
-      }
-    }
-    return button;
-  }
-
-  static bool read_button() {
-    return (PING & (1 << PING2)) >> PING2;
-  }
-};
-
-input rotary_input(encoder);
-
 uint8_t checkButton() {
   // Read rotary encoder
   rotary_input.tick();
-  return rotary_input.current_input_event();
+  uint8_t flags = rotary_input.current_input_event();
+  /* Check Button/rotary encoder
+   1 click/clockwise rotation
+   2 doubleClick/counter clockwise rotation
+   3 hold/press
+   4 longHold */
+  if (!flags | (flags & INPUT_BUTTON_PRESS)) {
+    return 0;
+  } else if (flags | INPUT_ROTARY_NEGATIVE) {
+    return 1;
+  } else if (flags | INPUT_ROTARY_POSITIVE) {
+    return 2;
+  } else if (flags | INPUT_BUTTON_SHORT_RELEASE) {
+    return 3;
+  } else if (flags | INPUT_BUTTON_LONG_RELEASE) {
+    return 4;
+  }
+  return 0;
 }
 
 // Wait for user to push button
@@ -3325,58 +3248,48 @@ void wait_btn() {
   Filebrowser Module
 *****************************************/
 
-static uint16_t count_in_directory(const char *dir_path)
-{
-  FsFile dir;
-  // Open filepath directory
-  if (!dir.open(dir_path)) {
-    display_Clear();
-    print_FatalError(sd_error_STR);
-  }
-
-  // Count files in directory (openNext closes the current file automatically)
-  FsFile file;
-  uint16_t result = 0;
-  while (file.openNext(&dir, O_READ)) {
-    result += !file.isHidden() && file.isFileOrSubDir();
-  }
-  file.close();
-  dir.close();
-  return result;
-}
-
 uint8_t retrieve_names(char *names, size_t names_size, FsFile& dir, uint8_t start, uint8_t count) {
+  // Make sure the buffer is always '\0' terminated
+  names[names_size - 1] = '\0';
+  // The number of strings extracted
   byte i = 0;
+  // The amount of bytes used in the names array
   size_t stored = 0;
-  // Cycle through all files, loading the names into filenNames[7]
-  // Only the ones in the current page are loaded, all prior ones,
-  // and hidden files/directories are skipped
-  FsFile file;
+  
+  // Append "../" to the names unless we're at the root directory.
   if (dir.isSubDir()) {
     snprintf(names, names_size, "../");
     stored += min(4, names_size - 1);
   }
+
+  // Cycle through all files, loading the names into filenNames[7]
+  // Only the ones in the current page are loaded, all prior ones,
+  // and hidden files/directories are skipped
+  dir.rewindDirectory();
+  FsFile file;
   while (stored != (names_size - 1) && file.openNext(&dir, O_READ) && (i < count)) {
     // Ignore if hidden
     if (file.isHidden() && !file.isFileOrSubDir()) {
       continue;
     }
 
+    // Skip files found until
     if (start) {
       start--;
       continue;
     }
     
-    // If we're here, the  file must be a file or subdir
+    // If we're here, the file must be a file or subdir
     char nameStr[FILENAME_LENGTH];
     size_t size = file.getName(nameStr, FILENAME_LENGTH);
     const char *format = "%s";
     if (file.isDir()) {
+      // Add / following a directory name
       size++;
       format = "%s/";
     }
-    // Add / following a directory name
     
+    // Leave 1 byte at the end of the names buffer for '\0'
     size_t space_left = names_size - stored - 1;
     snprintf(names + stored, space_left, format, nameStr);
     stored += min(size + 1, space_left);
@@ -3395,25 +3308,25 @@ void fileBrowser(const __FlashStringHelper* browserTitle) {
 
   bool done = false;
   while (!done) {
-    byte count = count_in_directory(filePath);
-
-    // Open filepath directory
-    FsFile myDir;
-    if (!myDir.open(filePath)) {
-      display_Clear();
-      print_FatalError(sd_error_STR);
-    }
-
-    // First entry is .. everywhere except root
+    byte count;
+    // Strings are saved consecutively and '\0' delimited
     char fileNames[16*FILENAME_LENGTH];
-    retrieve_names(fileNames, sizeof(fileNames), myDir, 0, UCHAR_MAX);
-    myDir.close();
+    {
+      // Open filepath directory
+      FsFile myDir;
+      if (!myDir.open(filePath)) {
+        display_Clear();
+        print_FatalError(sd_error_STR);
+      }
+
+      count = retrieve_names(fileNames, sizeof(fileNames), myDir, 0, UCHAR_MAX);
+      myDir.close();
+    }
 
     // Create menu with title and 1-7 options to choose from
     unsigned char answer = question_box(browserTitle, fileNames, count, 0);
     
     // Find the string corresponding to the answer
-    // Strings are saved consecutively and '\0' delimited
     const char *filename = fileNames;
     for (byte i = 0; i < answer; ++i) {
       filename += strlen(filename) + 1;
