@@ -66,6 +66,7 @@
 #include "OSCR.h"
 #include "Cart_Reader.h"
 #include "menu.h"
+#include "process.h"
 
 /******************************************
    Libraries
@@ -176,7 +177,7 @@ template<class T> int EEPROM_readAnything(int ee, T& value) {
   return i;
 }
 
-unique_ptr<mvc_menu > current_menu;
+unique_ptr<process > current_menu;
 
 /******************************************
   Common Strings
@@ -1219,7 +1220,7 @@ static const char* const modeOptions[] PROGMEM = {
 void mainMenu() {
   // wait for user choice to come back from the question box menu
   
-  auto main_menu = build_menu<mvc_main_menu<const __FlashStringHelper*const>>(
+  auto main_menu = build_process<main_process<const __FlashStringHelper*const>>(
     display2,
     rotary_input,
     F("OPEN SOURCE CART READER"),
@@ -2319,7 +2320,7 @@ void setup() {
 #endif                           /* ENABLE_3V3FIX */
 
   // Start menu system
-  current_menu = build_menu<mvc_main_menu<const __FlashStringHelper*const>>(
+  current_menu = build_process<main_process<const __FlashStringHelper*const>>(
     display2,
     rotary_input,
     F("OPEN SOURCE CART READER"),
@@ -2327,7 +2328,8 @@ void setup() {
     SYSTEM_MENU_TOTAL,
     0
   );
-  mainMenu();
+
+  //mainMenu();
 }
 
 /******************************************
@@ -2931,7 +2933,7 @@ byte question_box(const __FlashStringHelper* question __attribute__((unused)), T
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
 template<class T>
 unsigned char question_box(const __FlashStringHelper* question, T *answers, uint8_t num_answers, uint8_t default_choice) {
-  auto menu = build_menu<mvc_list_menu<__FlashStringHelper, T>>(display2, rotary_input, question, answers, num_answers, default_choice);
+  auto menu = build_process<list_process<__FlashStringHelper, T>>(display2, rotary_input, question, answers, num_answers, default_choice);
   while (!menu->tick()) {
     checkUpdater();
   }
@@ -3367,9 +3369,9 @@ void fileBrowser(const __FlashStringHelper* browserTitle) {
   filebrowse = 0;
 }
 
-unique_ptr<mvc_menu> setup_menu(uint8_t mode) {
+unique_ptr<process> setup_menu(uint8_t mode) {
 
-  return unique_ptr<mvc_menu>();
+  return unique_ptr<process>();
 switch (mode) {
 #ifdef ENABLE_N64
     case CORE_N64_CART: return n64CartMenu();
@@ -3538,8 +3540,9 @@ switch (mode) {
 void loop() {
   if (current_menu->tick())
   {
-    current_menu = current_menu->process_choice(current_menu->get_choice());
+    current_menu = current_menu->next_process(current_menu->get_choice());
   }
+  checkUpdater();
 }
 
 //******************************************

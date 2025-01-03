@@ -12,22 +12,23 @@ public:
   :data(data)
   {}
 
-  explicit unique_ptr(T&& ptr)
+  unique_ptr(unique_ptr&& ptr)
   :data(ptr.data)
   {
     ptr.data = nullptr;
   }
 
-  T& operator=(T&& ptr)
+  unique_ptr& operator=(unique_ptr&& ptr)
   {
     if (data)
       delete(data);
     data = ptr.data;
     ptr.data = nullptr;
+    return *this;
   }
 
-  explicit unique_ptr(const T&) = delete;
-  T& operator=(const T&) = delete;
+  unique_ptr(const unique_ptr&) = delete;
+  unique_ptr& operator=(const unique_ptr&) = delete;
 
   ~unique_ptr()
   {
