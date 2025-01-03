@@ -85,7 +85,7 @@ bool dont_log = false;
 template<class T> int EEPROM_writeAnything(int ee, const T& value);
 template<class T> int EEPROM_readAnything(int ee, T& value);
 template<class T>
-unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice = 0);
+unsigned char question_box(const __FlashStringHelper* question, T *answers, uint8_t num_answers, uint8_t default_choice = 0);
 
 // Graphic SPI LCD
 #ifdef ENABLE_LCD
@@ -175,6 +175,8 @@ template<class T> int EEPROM_readAnything(int ee, T& value) {
     *p++ = EEPROM.read(ee++);
   return i;
 }
+
+unique_ptr<mvc_menu > current_menu;
 
 /******************************************
   Common Strings
@@ -898,7 +900,7 @@ void printInstructions() {
 #elif defined(SERIAL_MONITOR)
   println_Msg(F("U/D to Change"));
   println_Msg(F("Space/Zero to Select"));
-#endif /* ENABLE_OLED | ENABLE_LCD | SERIAL_MONITOR */checkButton
+#endif /* ENABLE_OLED | ENABLE_LCD | SERIAL_MONITOR */
   display_Update();
 #ifdef ENABLE_GLOBAL_LOG
   // Enable log again
@@ -1213,12 +1215,21 @@ static const char* const modeOptions[] PROGMEM = {
 
 };
 
-
-
 // All included slots
 void mainMenu() {
   // wait for user choice to come back from the question box menu
-  switch (question_box(F("OPEN SOURCE CART READER"), reinterpret_cast<const __FlashStringHelper*const*>(modeOptions), SYSTEM_MENU_TOTAL)) {
+  
+  auto main_menu = build_menu<mvc_main_menu<const __FlashStringHelper*const>>(
+    display2,
+    rotary_input,
+    F("OPEN SOURCE CART READER"),
+    reinterpret_cast<const __FlashStringHelper*const*>(modeOptions),
+    SYSTEM_MENU_TOTAL,
+    0
+  );
+  while (!main_menu->tick());
+
+  switch (main_menu->get_choice()) {
 
 #ifdef ENABLE_GBX
     case SYSTEM_MENU_GBX:
@@ -1979,8 +1990,8 @@ void clkcal() {
       }
 
       if (a == 3) {  //button short hold
-        cal_offset *= 10ULL;
-        if (cal_offset > 100000000ULL) {
+        cal_offset *= 10LL;
+        if (cal_offset > 100000000LL) {
           cal_offset = 1;
         }
       }
@@ -2002,9 +2013,9 @@ void print_right(int32_t number) {
 
   if (abs_number == 0)
     abs_number = 1;
-  while (abs_number < 100000000ULL) {
+  while (abs_number < 100000000LL) {
     print_Msg(FS(FSTRING_SPACE));
-    abs_number *= 10ULL;
+    abs_number *= 10LL;
   }
   println_Msg(number);
 }
@@ -2308,6 +2319,14 @@ void setup() {
 #endif                           /* ENABLE_3V3FIX */
 
   // Start menu system
+  current_menu = build_menu<mvc_main_menu<const __FlashStringHelper*const>>(
+    display2,
+    rotary_input,
+    F("OPEN SOURCE CART READER"),
+    reinterpret_cast<const __FlashStringHelper*const*>(modeOptions),
+    SYSTEM_MENU_TOTAL,
+    0
+  );
   mainMenu();
 }
 
@@ -2860,7 +2879,7 @@ void statusLED(boolean on __attribute__((unused))) {
 #if defined(ENABLE_SERIAL)
 // Serial Monitor
 template<class T>
-byte question_box(const __FlashStringHelper* question __attribute__((unused)), const T* answers, uint8_t num_answers, uint8_t default_choice __attribute__((unused))) {
+byte question_box(const __FlashStringHelper* question __attribute__((unused)), T* answers, uint8_t num_answers, uint8_t default_choice __attribute__((unused))) {
   // Print menu to serial monitor
   Serial.println(FS(FSTRING_EMPTY));
   for (byte i = 0; i < num_answers; i++) {
@@ -2906,29 +2925,17 @@ byte question_box(const __FlashStringHelper* question __attribute__((unused)), c
 }
 #endif
 
+
 // OLED & LCD
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
 template<class T>
-unsigned char question_box(const __FlashStringHelper* question, const T *answers, uint8_t num_answers, uint8_t default_choice) {
-  // Create menu
-  // Menu spans across multiple pages
-  currPage = 1;
-  lastPage = 1;
-
-  numPages = (num_answers / 7) + ((num_answers % 7) != 0);
-
-  menu<__FlashStringHelper, T> menu( question, answers, num_answers, default_choice);
-  list_menu_view<T> view(display2, menu);
-  list_menu_controller<T> control(menu, rotary_input, view);
-  while (!control.tick()) {
+unsigned char question_box(const __FlashStringHelper* question, T *answers, uint8_t num_answers, uint8_t default_choice) {
+  auto menu = build_menu<mvc_list_menu<__FlashStringHelper, T>>(display2, rotary_input, question, answers, num_answers, default_choice);
+  while (!menu->tick()) {
     checkUpdater();
   }
-
-  // Reset page number
-  currPage = 1;
-
-  return menu.get_choice();
+  return menu->get_choice();
 }
 
 #endif
@@ -3201,7 +3208,7 @@ uint8_t checkButton() {
    2 doubleClick/counter clockwise rotation
    3 hold/press
    4 longHold */
-  if (!flags | (flags & INPUT_BUTTON_PRESS)) {
+  if ((!flags) | (flags & INPUT_BUTTON_PRESS)) {
     return 0;
   } else if (flags | INPUT_ROTARY_NEGATIVE) {
     return 1;
@@ -3324,7 +3331,7 @@ void fileBrowser(const __FlashStringHelper* browserTitle) {
     }
 
     // Create menu with title and 1-7 options to choose from
-    unsigned char answer = question_box(browserTitle, fileNames, count, 0);
+    unsigned char answer = question_box(browserTitle, reinterpret_cast<const char*>(fileNames), count, 0);
     
     // Find the string corresponding to the answer
     const char *filename = fileNames;
@@ -3360,11 +3367,10 @@ void fileBrowser(const __FlashStringHelper* browserTitle) {
   filebrowse = 0;
 }
 
-/******************************************
-  Main loop
-*****************************************/
-void loop() {
-  switch (mode) {
+unique_ptr<mvc_menu> setup_menu(uint8_t mode) {
+
+  return unique_ptr<mvc_menu>();
+switch (mode) {
 #ifdef ENABLE_N64
     case CORE_N64_CART: return n64CartMenu();
     case CORE_N64_CONTROLLER: return n64ControllerMenu();
@@ -3380,9 +3386,9 @@ void loop() {
     case CORE_SFM_GAME: return sfmGameOptions();
 #endif
 #ifdef ENABLE_GBX
-    case CORE_GB: return gbMenu();
-    case CORE_GBA: return gbaMenu();
-    case CORE_GBM: return gbmMenu();
+    //case CORE_GB: return gbMenu();
+    //case CORE_GBA: return gbaMenu();
+    //case CORE_GBM: return gbmMenu();
 #if defined(ENABLE_FLASH)
     case CORE_GB_GBSMART: return gbSmartMenu();
     case CORE_GB_GBSMART_FLASH: return gbSmartFlashMenu();
@@ -3522,7 +3528,17 @@ void loop() {
     case CORE_CPS3_128SIMM: return flashromCPS_SIMM2x8();
     case CORE_CPS3_64SIMM: return flashromCPS_SIMM4x8();
 #endif
-    case CORE_MAX: return resetArduino();
+    case CORE_MAX: resetArduino();
+  }
+}
+
+/******************************************
+  Main loop
+*****************************************/
+void loop() {
+  if (current_menu->tick())
+  {
+    current_menu = current_menu->process_choice(current_menu->get_choice());
   }
 }
 

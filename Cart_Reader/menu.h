@@ -2,38 +2,79 @@
 #define MENU_H_
 
 #include "Cart_Reader.h"
+#include "unique_ptr.h"
 
 #include <stdint.h>
 #include <avr/io.h>
 #include <U8g2lib.h>
 
+/** Represents the contents and state of menus.
+ *
+ * @tparam T1 The type of the title (typically __FlashStringHelper or
+ *  const char *)
+ * @tparam T2 The type of the list of prompts (typically
+ *  __FlashStringHelper*const, although there's a special case for
+ *  char for strings that are in one array, '\0' separated)
+ *
+ */
 template<class T1, class T2>
-class menu {
+class menu_model {
 public:
-  menu(const T1*const title, const T2*const prompts, uint8_t max_choices_, uint8_t default_choice)
-  :title(title), prompts(prompts), max_choices_(max_choices_), choice(default_choice)
+  /** Constructor.
+   * 
+   * @param[in] title Pointer to the menu title string.
+   * @param[in] prompts Pointer to a list of prompt strings (or a special const
+   *  char array that contains the strings consecutively, null separated),
+   * @param[in] max_choices The number of prompts.
+   * @param[in] default_choice The choice to use as a default.
+   */
+  menu_model(const T1* title, const T2* prompts, uint8_t max_choices, uint8_t default_choice)
+  :title(title), prompts(prompts), max_choices_(max_choices), choice(default_choice)
   {} 
 
+  /** Updates the menu option selected.
+   *
+   * If the provided choice is greater than the maximum number of choices
+   * available, the last menu choice is used.
+   *
+   * @param[in] choice_ Position of the new choice to select.
+   */
   void update(uint8_t choice_) {
-    choice = choice_;
+    choice = min(choice_, max_choices_ - 1);
   }
 
+  /** Returns the current choice.
+   *
+   * @returns The current choice.
+   */
   uint8_t get_choice() const
   {
     return choice;
   }
 
+  /** Returns the maximum number of menu choices available.
+   *
+   * @returns The maximum number of menu choices available.
+   */
   uint8_t max_choices() const
   {
     return max_choices_;
   }
 
-  const T1*const get_title() const
+  /** Returns a pointer to the current title.
+   *
+   * @returns A pointer to the current title.
+   */
+  const T1* get_title() const
   {
     return title;
   }
 
-  const T2*const get_prompts() const
+  /** Returns a pointer to the prompts.
+   *
+   * @returns A pointer to the prompts.
+   */ 
+  const T2* get_prompts() const
   {
     return prompts;
   }
@@ -45,14 +86,14 @@ private:
   uint8_t choice;
 };
 
+/** Represents the view of a list menu.
+ */
 template<class T>
 class list_menu_view {
 public:
-  list_menu_view(screen_display& display, const menu<__FlashStringHelper, T>& menu_)
-  :menu_(menu_), display(display)
-  {
-    draw();
-  }
+  list_menu_view(screen_display& display, const menu_model<__FlashStringHelper, T>& menu_)
+  :menu_(menu_), display(display), old_choice(menu_.get_choice())
+  {}
 
   virtual ~list_menu_view()
   {}
@@ -61,13 +102,13 @@ public:
   void update(uint8_t choice);
 
 private:
-  const menu<__FlashStringHelper, T>& menu_;
+  const menu_model<__FlashStringHelper, T>& menu_;
   screen_display& display;
 
   uint8_t old_choice;
 
   template<class T2>
-  void print_loop(const T2* prompts, unsigned char start, unsigned char count)
+  void print_loop(const T2*const prompts, unsigned char start, unsigned char count)
   {
     for (unsigned char i = start; i < count; i++) {
       // Add space for the selection dot
@@ -119,16 +160,16 @@ void list_menu_view<T>::draw() {
   // draw selection box
   display.get_display().drawBox(1, 8 * (menu_.get_choice() % 7) + 11, 3, 3);
   display.update();
-  old_choice = menu_.get_choice();
 }
 
 template<class T>
 void list_menu_view<T>::update(uint8_t new_choice) {
-  if (new_choice == old_choice) {
-    return;
-  }
   if (new_choice > menu_.max_choices()) {
     new_choice = menu_.max_choices();
+  }
+
+  if (new_choice == old_choice) {
+    return;
   }
 
   uint8_t current_page = old_choice / 7; // Max 7 options per page
@@ -156,7 +197,7 @@ void rgbLed(byte Color);
 template<class T>
 class list_menu_controller {
 public:
-  list_menu_controller(menu<__FlashStringHelper, T>& menu_, screen_input& input, list_menu_view<T>& view)
+  list_menu_controller(menu_model<__FlashStringHelper, T>& menu_, screen_input& input, list_menu_view<T>& view)
   :model(menu_), input(input), view(view), idle_time(millis()), idle_choice(0)
   {
     rgbLed(menu_.get_choice());
@@ -165,7 +206,7 @@ public:
   bool tick();
 
 private:
-  menu<__FlashStringHelper, T>& model;
+  menu_model<__FlashStringHelper, T>& model;
   screen_input input;
   list_menu_view<T>& view;
   unsigned long idle_time;
@@ -188,8 +229,6 @@ bool list_menu_controller<T>::tick() {
   input.tick();
   // change the rgb led to the start menu color
   //rgbLed(model.get_choice());
-
-  byte currentColor = model.get_choice();
 
   uint8_t event_flags = input.current_input_event();
   
@@ -238,6 +277,78 @@ bool list_menu_controller<T>::tick() {
   }
 
   return false;
+}
+
+
+class mvc_menu
+{
+public:
+  virtual ~mvc_menu() = default;
+  virtual bool tick() = 0;
+  virtual void draw() = 0;
+  virtual uint8_t get_choice() = 0;
+  virtual unique_ptr<mvc_menu> process_choice(uint8_t /*choice*/)
+  {
+    return unique_ptr<mvc_menu>();
+  }
+};
+
+template<class T1, class T2>
+class mvc_list_menu : public mvc_menu {
+public:
+  mvc_list_menu(screen_display& display, screen_input& input, const T1* title, T2* prompts, uint8_t max_choices, uint8_t default_choice)
+  :menu(title, prompts, max_choices, default_choice), view(display, menu), controller(menu, input, view)
+  {
+    view.draw();
+  }
+
+  virtual ~mvc_list_menu() = default;
+
+  void draw() override {
+    view.draw();
+  }
+
+  bool tick() override {
+    return controller.tick();
+  }
+
+  uint8_t get_choice() override {
+    return menu.get_choice();
+  }
+
+private:
+  menu_model<T1, T2> menu;
+  list_menu_view<T2> view;
+  list_menu_controller<T2> controller;
+};
+
+template<class T2>
+class mvc_main_menu : public mvc_list_menu<__FlashStringHelper, T2> {
+public:
+  mvc_main_menu(screen_display& display, screen_input& input, const __FlashStringHelper* title, T2* prompts, uint8_t max_choices, uint8_t default_choice)
+  :mvc_list_menu<__FlashStringHelper, T2>(display, input, title, prompts, max_choices, default_choice)
+  {}
+
+  virtual ~mvc_main_menu() = default;
+
+  unique_ptr<mvc_menu> process_choice(uint8_t choice) {
+    return setup_menu(choice);
+  }
+};
+
+template<class Menu, class T1, class T2>
+unique_ptr<mvc_menu> build_menu(screen_display& display, screen_input& input, const T1* title, T2* prompts, uint8_t max_choices, uint8_t default_choice = 0)
+{
+  return unique_ptr<mvc_menu>(
+    new Menu(
+      display,
+      input,
+      title,
+      prompts,
+      max_choices,
+      default_choice
+    )
+  );
 }
 
 #endif//MENU_H_
