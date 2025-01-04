@@ -224,7 +224,7 @@
 /* [ Nintendo 64 -------------------------------------------------- ]
 */
 
-#define ENABLE_N64
+//#define ENABLE_N64
 //#define ENABLE_CONTROLLERTEST
 
 /****/
@@ -232,7 +232,7 @@
 /* [ Nintendo Entertainment System/Family Computer ---------------- ]
 */
 
-#define ENABLE_NES
+//#define ENABLE_NES
 
 /****/
 
@@ -274,14 +274,14 @@
 /* [ Sega Master System/Mark III/Game Gear/SG-1000 ---------------- ]
 */
 
-#define ENABLE_SMS
+//#define ENABLE_SMS
 
 /****/
 
 /* [ Sega Mega Drive/Genesis -------------------------------------- ]
 */
 
-#define ENABLE_MD
+//#define ENABLE_MD
 
 /****/
 
@@ -316,7 +316,7 @@
 /* [ Super Nintendo ----------------------------------------------- ]
 */
 
-#define ENABLE_SNES
+//#define ENABLE_SNES
 
 /****/
 
@@ -535,7 +535,7 @@ also needs ENABLE_FLASH8 and ENABLE_FLASH16 to be enabled
     with all Cart Readers
 */
 
-#define OPTION_N64_FASTCRC
+//#define OPTION_N64_FASTCRC
 
 /****/
 

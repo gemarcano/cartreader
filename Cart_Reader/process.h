@@ -54,6 +54,7 @@ private:
 
 // FIXME where should this be?
 unique_ptr<process> setup_menu(uint8_t);
+unique_ptr<process> mainMenu(uint8_t);
 
 template<class T2>
 class main_process : public list_process<__FlashStringHelper, T2> {
@@ -65,7 +66,7 @@ public:
   virtual ~main_process() = default;
 
   unique_ptr<process> next_process(uint8_t choice) {
-    return setup_menu(choice);
+    return mainMenu(choice);
   }
 };
 

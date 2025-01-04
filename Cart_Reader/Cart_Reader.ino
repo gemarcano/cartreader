@@ -1216,21 +1216,11 @@ static const char* const modeOptions[] PROGMEM = {
 
 };
 
-// All included slots
-void mainMenu() {
-  // wait for user choice to come back from the question box menu
-  
-  auto main_menu = build_process<main_process<const __FlashStringHelper*const>>(
-    display2,
-    rotary_input,
-    F("OPEN SOURCE CART READER"),
-    reinterpret_cast<const __FlashStringHelper*const*>(modeOptions),
-    SYSTEM_MENU_TOTAL,
-    0
-  );
-  while (!main_menu->tick());
+unique_ptr<process> gbxMenu();
 
-  switch (main_menu->get_choice()) {
+// All included slots
+unique_ptr<process> mainMenu(uint8_t choice) {
+  switch (choice) {
 
 #ifdef ENABLE_GBX
     case SYSTEM_MENU_GBX:
@@ -1518,12 +1508,13 @@ void mainMenu() {
     case SYSTEM_MENU_CPS3:
       return cpsMenu();
 #endif
-
+/* FIXME
 #ifdef ENABLE_SELFTEST
     case SYSTEM_MENU_SELFTEST:
       return selfTest();
       break;
 #endif
+
 
     case SYSTEM_MENU_ABOUT:
       return aboutScreen();
@@ -1535,6 +1526,7 @@ void mainMenu() {
 
     default:
       return print_MissingModule();  // does not return
+  */
   }
 }
 
@@ -1548,7 +1540,7 @@ bool isPin_2t9_14t17_22t37_42t49_54t69(byte pinNumber) {
   return ((2 <= pinNumber) && (pinNumber <= 9)) || ((14 <= pinNumber) && (pinNumber <= 17)) || ((22 <= pinNumber) && (pinNumber <= 37)) || ((42 <= pinNumber) && (pinNumber <= 49)) || ((54 <= pinNumber) && (pinNumber <= 69));
 }
 
-void selfTest() {
+unique_ptr<process> selfTest() {
 #ifdef ENABLE_VSELECT
   // Set Automatic Voltage Selection to 3V
   setVoltage(VOLTS_SET_3V3);
@@ -3388,6 +3380,7 @@ switch (mode) {
     case CORE_SFM_GAME: return sfmGameOptions();
 #endif
 #ifdef ENABLE_GBX
+
     //case CORE_GB: return gbMenu();
     //case CORE_GBA: return gbaMenu();
     //case CORE_GBM: return gbmMenu();

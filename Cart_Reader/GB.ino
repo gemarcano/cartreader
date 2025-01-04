@@ -81,8 +81,36 @@ void setup_GBPort() {
   PORTC = 0xFF;
 }
 
+template<class T2>
+class gbx_process : public list_process<__FlashStringHelper, T2> {
+public:
+  gbx_process(screen_display& display, screen_input& input, const __FlashStringHelper* title, T2* prompts, uint8_t max_choices, uint8_t default_choice)
+  :list_process<__FlashStringHelper, T2>(display, input, title, prompts, max_choices, default_choice)
+  {}
+
+  virtual ~gbx_process() = default;
+
+  unique_ptr<process> next_process(uint8_t choice)
+  {
+    // FIXME;
+    return unique_ptr<process>();
+  }
+private:
+};
+
 // Start menu for both GB and GBA
-void gbxMenu() {
+unique_ptr<process> gbxMenu() {
+  return build_process<gbx_process<const __FlashStringHelper*>>(
+    display2,
+    rotary_input,
+    F("Select Game Boy"),
+    reinterpret_cast<const __FlashStringHelper*const*>(menuOptionsGBx),
+    7,
+    0
+  );
+}
+
+/*
   // create menu with title and 5 options to choose from
   unsigned char gbType;
   // Copy menuOptions out of progmem
@@ -429,7 +457,7 @@ void gbxMenu() {
     default:
       print_MissingModule();  // does not return
   }
-}
+}*/
 
 void gbMenu() {
   // create menu with title and 4 options to choose from
@@ -2560,7 +2588,7 @@ void readPelican_GB() {
       print_STR(press_button_STR, 1);
       display_Update();
       wait();
-      mainMenu();
+     // mainMenu();
     }
   }
 
@@ -2685,7 +2713,7 @@ void writePelican_GB() {
         print_STR(press_button_STR, 1);
         display_Update();
         wait();
-        mainMenu();
+        //mainMenu();
       }
     }
 
@@ -3013,7 +3041,7 @@ void writeMegaMem_GB() {
       print_STR(press_button_STR, 1);
       display_Update();
       wait();
-      mainMenu();
+      //mainMenu();
     }
   }
 
@@ -3249,7 +3277,7 @@ void readGameshark_GB() {
     print_STR(press_button_STR, 1);
     display_Update();
     wait();
-    mainMenu();
+    //mainMenu();
   }
 
   // Get name, add extension and convert to char array for sd lib
@@ -3319,7 +3347,7 @@ void writeGameshark_GB() {
     print_STR(press_button_STR, 1);
     display_Update();
     wait();
-    mainMenu();
+    //mainMenu();
   }
 
   // Launch filebrowser
