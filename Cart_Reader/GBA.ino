@@ -2829,12 +2829,12 @@ void flashRepro_GBA(boolean option) {
 
       // Erase needed sectors
       if (flashid == 0x8802) {
-        println_Msg(F("Erasing..."));
+        print_STR(erasing_STR, 1);
         display_Update();
         eraseIntel4000_GBA();
         resetIntel_GBA(0x200000);
       } else if (flashid == 0x8816) {
-        println_Msg(F("Erasing..."));
+        print_STR(erasing_STR, 1);
         display_Update();
         eraseIntel4400_GBA();
         resetIntel_GBA(0x200000);
@@ -2842,11 +2842,11 @@ void flashRepro_GBA(boolean option) {
         if (option) {
           blockNum = selectBlockNumber(1);
           display_Clear();
-          println_Msg(F("Erasing..."));
+          print_STR(erasing_STR, 1);
           display_Update();
           erase369in1(blockNum);
         } else {
-          println_Msg(F("Erasing..."));
+          print_STR(erasing_STR, 1);
           display_Update();
           erase369in1(0);
         }
@@ -2857,7 +2857,7 @@ void flashRepro_GBA(boolean option) {
         //print_FatalError(F("Sector Protected"));
         //}
         //else {
-        println_Msg(F("Erasing..."));
+        print_STR(erasing_STR, 1);
         display_Update();
         if ((romType == 0xC2) || (romType == 0x89) || (romType == 0x20)) {
           //MX29GL128E

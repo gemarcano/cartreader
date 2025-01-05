@@ -10,11 +10,10 @@
 static const char gbmMenuItem1[] PROGMEM = "Read ID";
 static const char gbmMenuItem2[] PROGMEM = "Read Flash";
 static const char gbmMenuItem3[] PROGMEM = "Erase Flash";
-static const char gbmMenuItem4[] PROGMEM = "Blankcheck";
 static const char gbmMenuItem5[] PROGMEM = "Write Flash";
 static const char gbmMenuItem6[] PROGMEM = "Read Mapping";
 static const char gbmMenuItem7[] PROGMEM = "Write Mapping";
-static const char* const menuOptionsGBM[] PROGMEM = { gbmMenuItem1, gbmMenuItem2, gbmMenuItem3, gbmMenuItem4, gbmMenuItem5, gbmMenuItem6, gbmMenuItem7 };
+static const char* const menuOptionsGBM[] PROGMEM = { gbmMenuItem1, gbmMenuItem2, gbmMenuItem3, string_blankcheck21, gbmMenuItem5, gbmMenuItem6, gbmMenuItem7 };
 
 void gbmMenu() {
   // create menu with title and 7 options to choose from
@@ -532,7 +531,7 @@ boolean readFlashID_GBM() {
 }
 
 void eraseFlash_GBM() {
-  println_Msg(F("Erasing..."));
+  print_STR(erasing_STR, 1);
   display_Update();
 
   //enable access to ports 0120h
@@ -568,7 +567,8 @@ void eraseFlash_GBM() {
 }
 
 boolean blankcheckFlash_GBM() {
-  print_Msg(F("Blankcheck..."));
+  print_STR(blankcheck_STR, 0);
+  print_STR(ellipsis_STR, 0);
   display_Update();
 
   //enable access to ports 0120h (F2)
@@ -763,7 +763,7 @@ void readMapping_GBM() {
 }
 
 void eraseMapping_GBM() {
-  println_Msg(F("Erasing..."));
+  print_STR(erasing_STR, 1);
   display_Update();
 
   //enable access to ports 0120h
@@ -799,7 +799,8 @@ void eraseMapping_GBM() {
 }
 
 boolean blankcheckMapping_GBM() {
-  print_Msg(F("Blankcheck..."));
+  print_STR(blankcheck_STR, 0);
+  print_STR(ellipsis_STR, 0);
   display_Update();
 
   // Enable ports 0x0120

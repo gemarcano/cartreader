@@ -600,7 +600,8 @@ void readRAM_MSX() {
     display_Clear();
     print_STR(saving_to_STR, 0);
     print_Msg(folder);
-    println_Msg(F("/..."));
+    print_STR(slash_STR, 0);
+    print_STR(ellipsis_STR, 1);
     display_Update();
 
     // open file on sdcard

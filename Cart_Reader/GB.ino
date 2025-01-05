@@ -1288,16 +1288,12 @@ void readROM_GB() {
 // Calculate checksum
 unsigned int calc_checksum_GB(char* fileName) {
   unsigned int calcChecksum = 0;
-  //  int calcFilesize = 0; // unused
-  unsigned long i = 0;
-  int c = 0;
 
   // If file exists
   if (myFile.open(fileName, O_READ)) {
-    //calcFilesize = myFile.fileSize() * 8 / 1024 / 1024; // unused
-    for (i = 0; i < (myFile.fileSize() / 512); i++) {
+    for (uint16_t i = (myFile.fileSize() / 512); i; --i) {
       myFile.read(sdBuffer, 512);
-      for (c = 0; c < 512; c++) {
+      for (size_t c = 511; c < 512; --c) {
         calcChecksum += sdBuffer[c];
       }
     }
@@ -1407,7 +1403,7 @@ void readSRAM_GB() {
     // Signal end of process
     print_Msg(F("Saved to "));
     print_Msg(folder);
-    println_Msg(F("/"));
+    print_STR(slash_STR, 1);
     display_Update();
   } else {
     print_Error(F("Cart has no SRAM"));
@@ -1718,7 +1714,8 @@ void readEEPROM_MBC7_GB() {
   display_Clear();
   print_STR(saving_to_STR, 0);
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   uint16_t* data = (uint16_t*)sdBuffer;
@@ -2051,7 +2048,7 @@ void writeFlash_GB(byte MBC, boolean commandSet, boolean flashErase) {
       busyCheck_GB(0, 0x80);
 
       // Blankcheck
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
 
       // Read x number of banks
@@ -2519,7 +2516,7 @@ bool writeCFI_GB() {
     if (romBanks <= flashBanks) {
       print_Msg(F("Using "));
       print_Msg(romBanks);
-      print_Msg(F("/"));
+      print_STR(slash_STR, 0);
       print_Msg(flashBanks);
       println_Msg(F(" Banks"));
       display_Update();
@@ -2568,7 +2565,7 @@ bool writeCFI_GB() {
     }
 
     // Blankcheck
-    println_Msg(F("Blankcheck"));
+    print_STR(blankcheck_STR, 1);
     display_Update();
 
     // Read x number of banks
@@ -2931,7 +2928,8 @@ void writePelican_GB() {
     }
 
     // Blankcheck
-    println_Msg(F("Blankcheck..."));
+    print_STR(blankcheck_STR, 0);
+    print_STR(ellipsis_STR, 1);
     display_Update();
 
     // Read x number of banks
@@ -3113,7 +3111,8 @@ void readMegaMem_GB() {
   display_Clear();
   print_STR(saving_to_STR, 0);
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   println_Msg(F("Rom.GB"));
   display_Update();
 
@@ -3151,7 +3150,8 @@ void readMegaMem_GB() {
   display_Clear();
   print_STR(saving_to_STR, 0);
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   println_Msg(F("SaveData.bin"));
   display_Update();
 
@@ -3265,7 +3265,8 @@ void writeMegaMem_GB() {
   }
 
   // Blankcheck
-  println_Msg(F("Blankcheck..."));
+  print_STR(blankcheck_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // Read x number of banks
@@ -3569,7 +3570,8 @@ void writeGameshark_GB() {
   }
 
   // Blankcheck
-  println_Msg(F("Blankcheck..."));
+  print_STR(blankcheck_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // Read x number of banks

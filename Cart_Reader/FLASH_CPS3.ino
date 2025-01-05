@@ -112,7 +112,7 @@ void flashromCPS_Cartridge() {
   switch (mainMenu) {
     case 0:
       display_Clear();
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
       time = millis();
       resetFlash8();
@@ -289,7 +289,7 @@ void flashromCPS_SIMM2x8() {
   switch (mainMenu) {
     case 0:
       display_Clear();
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
       time = millis();
       resetSIMM2x8();
@@ -421,7 +421,7 @@ void flashromCPS_SIMM4x8() {
   switch (mainMenu) {
     case 0:
       display_Clear();
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
       time = millis();
       resetSIMM4x8();

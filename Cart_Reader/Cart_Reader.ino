@@ -180,6 +180,12 @@ template<class T> int EEPROM_readAnything(int ee, T& value) {
 #define right_to_select_STR 14
 #define rotate_to_change_STR 15
 #define press_to_select_STR 16
+#define clock_generator_not_found_STR 17
+#define erasing_STR 18
+#define savetype_error_STR 19
+#define ellipsis_STR 20
+#define blankcheck_STR 21
+#define slash_STR 22
 
 // This array holds the most often used strings
 constexpr char string_press_button0[] PROGMEM = "Press Button...";
@@ -198,14 +204,22 @@ constexpr char string_press_to_change13[] PROGMEM = "Press left to Change";
 constexpr char string_right_to_select14[] PROGMEM = "and right to Select";
 constexpr char string_rotate_to_change15[] PROGMEM = "Rotate to Change";
 constexpr char string_press_to_select16[] PROGMEM = "Press to Select";
+constexpr char string_clock_generator_not_found17[] PROGMEM = "Clock Generator not found";
+constexpr char string_erasing18[] PROGMEM = "Erasing...";
+constexpr char string_savetype_error19[] PROGMEM = "Savetype Error";
+constexpr char string_ellipsis20[] PROGMEM = "...";
+constexpr char string_blankcheck21[] PROGMEM = "Blankcheck";
+constexpr char string_slash22[] PROGMEM = "/";
 
 static constexpr const char* const string_table[] PROGMEM = {
   string_press_button0, string_sd_error1, FSTRING_RESET,
   string_did_not_verify3, string_bytes4, string_error5, string_create_file6,
   string_open_file7, string_file_too_big8, string_done9, string_saving_to10,
   string_verifying11, string_flashing_file12, string_press_to_change13,
-  string_right_to_select14, string_rotate_to_change15, string_press_to_select16
-};
+  string_right_to_select14, string_rotate_to_change15,
+  string_press_to_select16, string_clock_generator_not_found17,
+  string_erasing18, string_savetype_error19, string_ellipsis20,
+  string_blankcheck21, string_slash22 };
 
 void print_STR(byte string_number, boolean newline) {
   if (newline)
@@ -687,7 +701,8 @@ void printAndIncrementFolder(bool displayClear = false) {
   }
   print_STR(saving_to_STR, 0);
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
   // write new folder number back to eeprom
   foldern = foldern + 1;
@@ -1922,7 +1937,7 @@ void clkcal() {
 
   if (!i2c_found) {
     display_Clear();
-    print_FatalError(F("Clock Generator not found"));
+    print_FatalError(clock_generator_not_found_STR);
   }
 
   //clockgen.set_correction(cal_factor, SI5351_PLL_INPUT_XO);
@@ -2762,7 +2777,7 @@ void display_Update() {
 
 void display_Clear() {
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
-  display.clearDisplay();
+  display.clearBuffer();
   display.setCursor(0, 8);
 #endif
 #ifdef ENABLE_GLOBAL_LOG
@@ -2914,32 +2929,27 @@ byte questionBox_Serial(const __FlashStringHelper* question __attribute__((unuse
 // Display a question box with selectable answers. Make sure default choice is in (0, num_answers]
 unsigned char questionBox_Display(const __FlashStringHelper* question, char answers[7][20], uint8_t num_answers, uint8_t default_choice) {
   //clear the screen
-  display.clearDisplay();
-  display.updateDisplay();
-  display.setCursor(0, 8);
+  display_Clear();
   display.setDrawColor(1);
 
   // change the rgb led to the start menu color
   rgbLed(default_choice);
 
   // print menu
-  display.println(question);
-  display.setCursor(0, display.ty + 8);
+  println_Msg(question);
   for (unsigned char i = 0; i < num_answers; i++) {
     // Add space for the selection dot
-    display.print("   ");
+    print_Msg("   ");
     // Print menu item
-    display.println(answers[i]);
-    display.setCursor(0, display.ty + 8);
+    println_Msg(answers[i]);
   }
-  display.updateDisplay();
 
   // start with the default choice
   choice = default_choice;
 
   // draw selection box
   display.drawBox(1, 8 * choice + 11, 3, 3);
-  display.updateDisplay();
+  display_Update();
 
   unsigned long idleTime = millis();
   byte currentColor = 0;
@@ -2969,6 +2979,7 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
     uint8_t b = checkButton();
 
     // if button is pressed twice or rotary encoder turned left/counter clockwise
+
     if (b == 2) {
       idleTime = millis();
 
@@ -2976,7 +2987,6 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
       display.setDrawColor(0);
       display.drawBox(1, 8 * choice + 11, 3, 3);
       display.setDrawColor(1);
-      display.updateDisplay();
 
       // If cursor on top list entry
       if (choice == 0) {
@@ -3003,7 +3013,7 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
 
       // draw selection box
       display.drawBox(1, 8 * choice + 11, 3, 3);
-      display.updateDisplay();
+      display_Update();
 
       // change RGB led to the color of the current menu option
       rgbLed(choice);
@@ -3017,7 +3027,6 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
       display.setDrawColor(0);
       display.drawBox(1, 8 * choice + 11, 3, 3);
       display.setDrawColor(1);
-      display.updateDisplay();
 
       if ((choice == num_answers - 1) && (numPages > currPage)) {
         lastPage = currPage;
@@ -3028,7 +3037,7 @@ unsigned char questionBox_Display(const __FlashStringHelper* question, char answ
 
       // draw selection box
       display.drawBox(1, 8 * choice + 11, 3, 3);
-      display.updateDisplay();
+      display_Update();
 
       // change RGB led to the color of the current menu option
       rgbLed(choice);

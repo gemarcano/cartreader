@@ -79,7 +79,7 @@ void setup_SuprAcan() {
   }
 #ifdef ENABLE_CLOCKGEN
   else {
-    print_FatalError(F("Clock Generator not found"));
+    print_FatalError(clock_generator_not_found_STR);
   }
 #endif
 
@@ -213,7 +213,7 @@ static void writeSRAM_Acan() {
 
   print_Msg(F("Writing "));
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   dataOut_MD();
@@ -322,7 +322,7 @@ static void writeUM6650() {
 
   print_Msg(F("Writing "));
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   dataOut_MD();
@@ -344,7 +344,7 @@ static void flashCart_Acan() {
 
   print_Msg(F("Writing "));
   print_Msg(filePath + 1);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   uint32_t i, j, k, file_length = myFile.fileSize();

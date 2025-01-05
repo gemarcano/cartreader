@@ -542,7 +542,7 @@ void readSRAM_VB() {
   myFile.close();
   print_Msg(F("Saved to "));
   print_Msg(folder);
-  println_Msg(F("/"));
+  print_STR(slash_STR, 1);
   display_Update();
 }
 

@@ -202,7 +202,7 @@ void setup_C64() {
 
   if (!i2c_found) {
     display_Clear();
-    print_FatalError(F("Clock Generator not found"));
+    print_FatalError(clock_generator_not_found_STR);
   }
 
   // Set Eeprom clock to 1Mhz

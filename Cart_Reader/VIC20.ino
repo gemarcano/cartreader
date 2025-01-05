@@ -242,7 +242,8 @@ void readROM_VIC20()
   display_Clear();
   print_Msg(F("Saving to "));
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   byte rommap = 0;
@@ -263,7 +264,7 @@ void readROM_VIC20()
     snprintf(fileName, sizeof(fileName), "%s.%x", romName, rommap);
     // open file on sdcard
     if (!myFile.open(fileName, O_RDWR | O_CREAT))
-      print_FatalError(F("Can't create file on SD"));
+      print_FatalError(create_file_STR);
 
     if (rommap == 0x20) { // BLK1
       PORTH &= ~(1 << 3); // BLK1(PH3) LOW

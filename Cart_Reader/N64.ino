@@ -296,7 +296,7 @@ void n64CartMenu() {
         resetEeprom_N64();
         readEeprom_N64();
       } else {
-        print_Error(F("Savetype Error"));
+        print_Error(savetype_error_STR);
       }
       println_Msg(FS(FSTRING_EMPTY));
       // Prints string out of the common strings array either with or without newline
@@ -474,7 +474,7 @@ void setup_N64_Cart() {
 
   if (!i2c_found) {
     display_Clear();
-    print_FatalError(F("Clock Generator not found"));
+    print_FatalError(clock_generator_not_found_STR);
   }
 
   // Set Eeprom clock to 2Mhz
@@ -1067,7 +1067,7 @@ void nextscreen() {
     // reset button
     lastbutton = "N/A";
 
-    display.clearDisplay();
+    display_Clear();
     if (startscreen != 4)
       startscreen = startscreen + 1;
     else {
@@ -1180,7 +1180,7 @@ void controllerTest_Display() {
           printSTR("(Continue with START)", 16, 55);
 
           //Update LCD
-          display.updateDisplay();
+          display_Update();
 
           // go to next screen
           nextscreen();
@@ -1218,11 +1218,11 @@ void controllerTest_Display() {
           if (cmode == 1) {
             display.drawPixel(10 + xax + N64_status.stick_x / 4, 12 + yax - N64_status.stick_y / 4);
             //Update LCD
-            display.updateDisplay();
+            display_Update();
           } else {
             display.drawCircle(10 + xax + N64_status.stick_x / 4, 12 + yax - N64_status.stick_y / 4, 2);
             //Update LCD
-            display.updateDisplay();
+            display_Update();
             display_Clear_Slow();
           }
 
@@ -1230,10 +1230,10 @@ void controllerTest_Display() {
           if (button == "Press a button" && lastbutton == "Z") {
             if (cmode == 0) {
               cmode = 1;
-              display.clearDisplay();
+              display_Clear();
             } else {
               cmode = 0;
-              display.clearDisplay();
+              display_Clear();
             }
           }
           // go to next screen
@@ -1257,13 +1257,13 @@ void controllerTest_Display() {
           printSTR("Try to fill the box by", 22, 45);
           printSTR("slowly moving right", 22, 55);
           //Update LCD
-          display.updateDisplay();
+          display_Update();
 
           if (button == "Press a button" && lastbutton == "Z") {
             // reset button
             lastbutton = "N/A";
 
-            display.clearDisplay();
+            display_Clear();
           }
           // go to next screen
           nextscreen();
@@ -1299,7 +1299,7 @@ void controllerTest_Display() {
                         // reset button
                         lastbutton = "N/A";
                         results = 1;
-                        display.clearDisplay();
+                        display_Clear();
                         break;
                       }
                       printSTR(anastick, 22 + 50, 15);
@@ -1325,7 +1325,7 @@ void controllerTest_Display() {
                       display.drawPixel(xax, yax);
 
                       //Update LCD
-                      display.updateDisplay();
+                      display_Update();
                       break;
                     }
                   case 1:
@@ -1352,7 +1352,7 @@ void controllerTest_Display() {
                         // reset button
                         lastbutton = "N/A";
                         results = 0;
-                        display.clearDisplay();
+                        display_Clear();
                         break;
                       }
                       printSTR(anastick, 22 + 50, 15);
@@ -1378,7 +1378,7 @@ void controllerTest_Display() {
                       display.drawPixel(xax, yax);
 
                       //Update LCD
-                      display.updateDisplay();
+                      display_Update();
                       break;
                     }
 
@@ -1398,7 +1398,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                   test = 2;
                 }
                 break;
@@ -1416,7 +1416,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1433,7 +1433,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1450,7 +1450,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1467,7 +1467,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1484,7 +1484,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1501,7 +1501,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1518,7 +1518,7 @@ void controllerTest_Display() {
                   // reset button
                   lastbutton = "N/A";
 
-                  display.clearDisplay();
+                  display_Clear();
                 }
                 break;
               }
@@ -1527,7 +1527,7 @@ void controllerTest_Display() {
             display.drawStr(38, 8, "Benchmark");
             display.drawLine(0, 9, 128, 9);
           }
-          display.updateDisplay();
+          display_Update();
           // go to next screen
           nextscreen();
           break;
@@ -1832,7 +1832,7 @@ void writeMPK() {
   sprintf(filePath, "%s/%s", filePath, fileName);
   print_Msg(F("Writing "));
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // Open file on sd card
@@ -2267,7 +2267,7 @@ void writeEeprom_N64() {
       print_FatalError(sd_error_STR);
     }
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
 }
 
@@ -2330,7 +2330,7 @@ void readEeprom_N64() {
     // Close the file:
     myFile.close();
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
 }
 
@@ -2367,7 +2367,7 @@ unsigned long verifyEeprom_N64() {
     // Return 0 if verified ok, or number of errors
     return writeErrors;
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
     return 1;
   }
 }
@@ -2411,7 +2411,7 @@ void writeSram(unsigned long sramSize) {
     }
 
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
 }
 
@@ -2435,7 +2435,7 @@ void readSram(unsigned long sramSize, byte flashramType) {
   } else if (saveType == 2) {
     suffix = "768";
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
   createFolderAndOpenFile("N64", "SAVE", romName, suffix);
 
@@ -2604,7 +2604,7 @@ void writeFram(byte flashramType) {
       print_FatalError(sd_error_STR);
     }
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
 }
 
@@ -2632,7 +2632,7 @@ void eraseFram() {
       }
     }
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
 }
 
@@ -2645,7 +2645,7 @@ void readFram(byte flashramType) {
     // Read Flashram
     readSram(131072, flashramType);
   } else {
-    print_FatalError(F("Savetype Error"));
+    print_FatalError(savetype_error_STR);
   }
 }
 
@@ -4233,7 +4233,7 @@ void backupGameshark_N64() {
 }
 
 void eraseGameshark_N64() {
-  println_Msg(F("Erasing..."));
+  print_STR(erasing_STR, 1);
   display_Update();
 
   // Send chip erase to SST 29LE010 / AMTEL AT29LV010A / SST 29EE010
@@ -4272,7 +4272,8 @@ void eraseGameshark_N64() {
 
 void blankCheck_N64() {
   // Blankcheck
-  println_Msg(F("Blankcheck..."));
+  print_STR(blankcheck_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   for (unsigned long currSector = 0; currSector < flashSize; currSector += 131072) {
@@ -4615,7 +4616,7 @@ void evenXPaddrWrite(unsigned long addr, word data) {
 }
 
 void eraseXplorer_N64() {
-  println_Msg(F("Erasing..."));
+  print_STR(erasing_STR, 1);
   display_Update();
 
   // Send chip erase to SST 29LE010
@@ -4627,7 +4628,8 @@ void eraseXplorer_N64() {
 
 void blankCheck_XP64() {
   // Blankcheck
-  println_Msg(F("Blankcheck..."));
+  print_STR(blankcheck_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   for (unsigned long currSector = 0; currSector < 262144; currSector += 131072) {

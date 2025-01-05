@@ -522,7 +522,7 @@ void crc_search(char *file_p, char *folder_p, uint32_t rom_size __attribute__((u
           println_Msg(crc_file);
           print_Msg(F("Saved to "));
           print_Msg(folder_p);
-          print_Msg(F("/"));
+          print_STR(slash_STR, 0);
           print_Msg(gamename);
           flag = CHKSUM_OK;
           rom.rename(gamename);
@@ -536,14 +536,14 @@ void crc_search(char *file_p, char *folder_p, uint32_t rom_size __attribute__((u
   if (flag == CHKSUM_SKIP) {
     print_Msg(F("Saved to "));
     print_Msg(folder_p);
-    print_Msg(F("/"));
+    print_STR(slash_STR, 0);
     print_Msg(file_p);
   } else if (flag == CHKSUM_ERROR) {
     print_Msg(F("Chksum Error "));
     println_Msg(crc_file);
     print_Msg(F("Saved to "));
     print_Msg(folder_p);
-    print_Msg(F("/"));
+    print_STR(slash_STR, 0);
     print_Msg(file_p);
   }
 
@@ -582,7 +582,7 @@ void read_tennokoe_bank_PCE(int bank_index) {
 
   print_Msg(F("Saving RAM to "));
   print_Msg(folder);
-  print_Msg(F("/"));
+  print_STR(slash_STR, 0);
   println_Msg(fileName);
   display_Update();
 
@@ -932,7 +932,7 @@ void flash_PCE() {
 
   if (openFlashFile()) {
 
-    println_Msg(F("Erasing..."));
+    print_STR(erasing_STR, 1);
     display_Update();
 
     // CHIP ERASE PROGRAM

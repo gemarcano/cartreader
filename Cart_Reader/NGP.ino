@@ -253,7 +253,8 @@ void scanChip_NGP() {
 
   print_Msg(F("Saving chip report to "));
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // open file on sdcard

@@ -1914,7 +1914,7 @@ void readSram_MD() {
   myFile.close();
   print_Msg(F("Saved to "));
   print_Msg(folder);
-  println_Msg(F("/"));
+  print_STR(slash_STR, 1);
   display_Update();
 }
 
@@ -1988,7 +1988,7 @@ void write29F1610_MD() {
   sprintf(filePath, "%s/%s", filePath, fileName);
   print_STR(flashing_file_STR, 0);
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // Open file on sd card
@@ -2054,7 +2054,7 @@ void write29GL_MD() {
   sprintf(filePath, "%s/%s", filePath, fileName);
   print_STR(flashing_file_STR, 0);
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // Open file on sd card

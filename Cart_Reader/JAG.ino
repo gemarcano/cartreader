@@ -597,7 +597,8 @@ void readJagROM() {
   display_Clear();
   print_Msg(F("Saving ROM to "));
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // write new folder number back to eeprom
@@ -889,18 +890,18 @@ void EepromDisplay() {  // FOR SERIAL ONLY
   for (word address = 0; address < eepEnd; address += 2) {
     EepromRead(address);
     if ((address % 16 == 0) && (address != 0))
-      Serial.println(F(""));
+      Serial.println(FS(FSTRING_EMPTY));
     if (jagEepBuf[1] < 0x10)
       Serial.print(F("0"));
     Serial.print(jagEepBuf[1], HEX);
-    Serial.print(F(" "));
+    Serial.print(FS(FSTRING_SPACE));
     if (jagEepBuf[0] < 0x10)
       Serial.print(F("0"));
     Serial.print(jagEepBuf[0], HEX);
-    Serial.print(F(" "));
+    Serial.print(FS(FSTRING_SPACE));
   }
-  Serial.println(F(""));
-  Serial.println(F(""));
+  Serial.println(FS(FSTRING_EMPTY));
+  Serial.println(FS(FSTRING_EMPTY));
 }
 #endif
 //*****************************************************************************
@@ -960,7 +961,7 @@ void readJagEEP() {
   EepromresetArduino();
   // Close the file:
   myFile.close();
-  println_Msg(F(""));
+  println_Msg(FS(FSTRING_EMPTY));
   print_Msg(F("Saved to "));
   println_Msg(folder);
   display_Update();
@@ -1004,7 +1005,7 @@ void writeJagEEP() {
     EepromresetArduino();
     // Close the file:
     myFile.close();
-    println_Msg(F(""));
+    println_Msg(FS(FSTRING_EMPTY));
     println_Msg(F("DONE"));
     display_Update();
   } else {
@@ -1041,7 +1042,7 @@ void eraseFLASH() {  // Chip Erase (NOT NEEDED FOR WRITES)
   // Switch to write
   dataOut_Jag();
 
-  println_Msg(F("Erasing..."));
+  print_STR(erasing_STR, 1);
   display_Update();
 
   // Erase command sequence
@@ -1324,7 +1325,8 @@ void readJagMEMORY() {
   display_Clear();
   print_Msg(F("Saving ROM to "));
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // write new folder number back to eeprom
@@ -1386,7 +1388,8 @@ void readJagFLASH() {
   display_Clear();
   print_Msg(F("Saving FLASH to "));
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // write new folder number back to eeprom
@@ -1420,7 +1423,7 @@ void readJagFLASH() {
   myFile.close();
   print_Msg(F("Saved to "));
   print_Msg(folder);
-  println_Msg(F("/"));
+  print_STR(slash_STR, 1);
 
   println_Msg(F("Press Button..."));
   display_Update();
@@ -1474,7 +1477,7 @@ unsigned long verifyJagFLASH() {
   dataIn_Jag();
   writeErrors = 0;
 
-  println_Msg(F(""));
+  println_Msg(FS(FSTRING_EMPTY));
   println_Msg(F("Verifying..."));
   display_Update();
 

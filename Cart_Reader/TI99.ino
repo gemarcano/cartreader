@@ -455,7 +455,8 @@ void readGROM_TI99()
     //    println_Msg(FS(FSTRING_EMPTY));
     print_Msg(F("Saving to "));
     print_Msg(folder);
-    println_Msg(F("/..."));
+    print_STR(slash_STR, 0);
+    print_STR(ellipsis_STR, 1);
     display_Update();
 
     // Split into Individual GROM Files
@@ -464,7 +465,7 @@ void readGROM_TI99()
         snprintf(fileName, sizeof(fileName), "%s.g%d.bin", romName, x);
         // open file on sdcard
         if (!myFile.open(fileName, O_RDWR | O_CREAT))
-          print_Error(F("Can't create file on SD"));
+          print_Error(create_file_STR);
 
         display_Clear();
         print_Msg(F("Reading GROM "));
@@ -517,13 +518,14 @@ void readCROM_TI99()
   else {
     print_Msg(F("Saving to "));
     print_Msg(folder);
-    println_Msg(F("/..."));
+    print_STR(slash_STR, 0);
+    print_STR(ellipsis_STR, 1);
     display_Update();
 
     snprintf(fileName, sizeof(fileName), "%s.c.bin", romName);
     // open file on sdcard
     if (!myFile.open(fileName, O_RDWR | O_CREAT))
-      print_Error(F("Can't create file on SD"));
+      print_Error(create_file_STR);
 
     if (ti99mapper == 1) { // MBX
       // MBX Cart ROM 16K
@@ -639,7 +641,7 @@ void checkStatus_TI99()
   Serial.println(F("KB"));
   Serial.print(F("GROM MAP:  "));
   readGROMMap();
-  Serial.println(F(""));
+  Serial.println(FS(FSTRING_EMPTY));
 #endif
 }
 
@@ -711,7 +713,7 @@ setmapper:
   }
   if (ti99mapfound == false) {
     Serial.println(F("MAPPER NOT SUPPORTED!"));
-    Serial.println(F(""));
+    Serial.println(FS(FSTRING_EMPTY));
     newti99mapper = 0;
     goto setmapper;
   }

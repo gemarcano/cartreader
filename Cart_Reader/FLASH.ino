@@ -22,7 +22,6 @@ boolean byteCtrl = 0;
    Menu
  *****************************************/
 // General Flash menu items
-static const char flashMenuItemBlankcheck[] PROGMEM = "Blankcheck";
 static const char flashMenuItemID[] PROGMEM = "ID";
 static const char flashMenuItemRead[] PROGMEM = "Read";
 static const char flashMenuItemWrite[] PROGMEM = "Write";
@@ -30,7 +29,7 @@ static const char flashMenuItemErase[] PROGMEM = "Erase";
 static const char flashMenuItemPrint[] PROGMEM = "Print";
 
 // 8bit Flash menu items
-static const char* const menuOptionsFLASH8[] PROGMEM = { flashMenuItemBlankcheck, flashMenuItemErase, flashMenuItemRead, flashMenuItemWrite, flashMenuItemID, flashMenuItemPrint, FSTRING_RESET };
+static const char* const menuOptionsFLASH8[] PROGMEM = { string_blankcheck21, flashMenuItemErase, flashMenuItemRead, flashMenuItemWrite, flashMenuItemID, flashMenuItemPrint, FSTRING_RESET };
 
 #ifndef ENABLE_FLASH16
 // Flash mode menu
@@ -53,11 +52,11 @@ static const char flashMenuItem5[] PROGMEM = "16bit Flash";
 static const char* const menuOptionsFlash[] PROGMEM = { flashMenuItem1, flashMenuItem2, flashMenuItem3, flashMenuItem4, flashMenuItem5, FSTRING_RESET };
 
 // 16bit Flash menu items
-static const char* const menuOptionsFLASH16[] PROGMEM = { flashMenuItemBlankcheck, flashMenuItemErase, flashMenuItemRead, flashMenuItemWrite, flashMenuItemID, flashMenuItemPrint, FSTRING_RESET };
+static const char* const menuOptionsFLASH16[] PROGMEM = { string_blankcheck21, flashMenuItemErase, flashMenuItemRead, flashMenuItemWrite, flashMenuItemID, flashMenuItemPrint, FSTRING_RESET };
 
 // Eprom menu items
 static const char epromMenuItem4[] PROGMEM = "Verify";
-static const char* const menuOptionsEprom[] PROGMEM = { flashMenuItemBlankcheck, flashMenuItemRead, flashMenuItemWrite, epromMenuItem4, flashMenuItemPrint, FSTRING_RESET };
+static const char* const menuOptionsEprom[] PROGMEM = { string_blankcheck21, flashMenuItemRead, flashMenuItemWrite, epromMenuItem4, flashMenuItemPrint, FSTRING_RESET };
 
 void flashMenu() {
   display_Clear();
@@ -202,7 +201,7 @@ void flashromMenu8() {
   switch (mainMenu) {
     case 0:
       display_Clear();
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
       time = millis();
       resetFlash8();
@@ -345,7 +344,7 @@ void flashromMenu16() {
   switch (mainMenu) {
     case 0:
       display_Clear();
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
       time = millis();
       resetFlash16();
@@ -438,7 +437,7 @@ void epromMenu() {
   switch (mainMenu) {
     case 0:
       display_Clear();
-      println_Msg(F("Blankcheck"));
+      print_STR(blankcheck_STR, 1);
       display_Update();
       time = millis();
       blankcheck_Eprom();
@@ -1483,7 +1482,7 @@ bool openFlashFile() {
   sprintf(filePath, "%s/%s", filePath, fileName);
   print_STR(flashing_file_STR, 0);
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   return openFileOnSD();
@@ -3144,7 +3143,7 @@ void writeCFI_Flash(byte currChip, byte totalChips, boolean reversed) {
     // Print filepath
     print_STR(flashing_file_STR, 0);
     print_Msg(filePath);
-    println_Msg(F("..."));
+    print_STR(ellipsis_STR, 1);
     // Check size
     if ((flashSize == 8388608) && (fileSize < 6291456) && reversed) {
       println_Msg(FS(FSTRING_EMPTY));
@@ -3165,7 +3164,7 @@ void writeCFI_Flash(byte currChip, byte totalChips, boolean reversed) {
     dataIn8();
 
     delay(100);
-    println_Msg(F("Erasing..."));
+    print_STR(erasing_STR, 1);
     display_Update();
 
     // Erase flash
@@ -3195,7 +3194,7 @@ void writeCFI_Flash(byte currChip, byte totalChips, boolean reversed) {
     if ((totalChips > 1) || reversed) {
       print_Msg(FS(FSTRING_SPACE));
       print_Msg(currChip);
-      print_Msg(F("/"));
+      print_STR(slash_STR, 0);
       print_Msg(totalChips);
       print_Msg(FS(FSTRING_SPACE));
       print_Msg(FS(FSTRING_SPACE));
@@ -3224,7 +3223,7 @@ void writeCFI_Flash(byte currChip, byte totalChips, boolean reversed) {
           break;
       }
     } else
-      println_Msg(F("..."));
+      print_STR(ellipsis_STR, 1);
     display_Update();
 
     //Initialize progress bar

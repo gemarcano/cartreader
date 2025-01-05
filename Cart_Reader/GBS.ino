@@ -396,7 +396,7 @@ void gbSmartGetGames(struct GBSmartGameInfo *gbSmartGames, boolean *hasMenu, byt
 void gbSmartReadFlash() {
   print_Msg(F("Saving as GB/GBS/"));
   print_Msg(fileName);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   if (!myFile.open(fileName, O_RDWR | O_CREAT))
@@ -452,7 +452,8 @@ void gbSmartWriteFlash() {
     gbSmartResetFlash(bank);
 
     print_STR(done_STR, 1);
-    print_Msg(F("Blankcheck..."));
+    print_STR(blankcheck_STR, 0);
+    print_STR(ellipsis_STR, 0);
     display_Update();
 
     if (!gbSmartBlankCheckingFlash(bank))
@@ -494,7 +495,7 @@ void gbSmartWriteFlash(uint32_t start_bank) {
 
   print_Msg(F("Writing Bank 0x"));
   print_Msg(start_bank, HEX);
-  print_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   // handle bank 0x00 on 0x0000

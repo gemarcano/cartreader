@@ -641,7 +641,7 @@ static void writeSRAM_WS() {
   display_Clear();
   print_Msg(F("Writing "));
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   if (myFile.open(filePath, O_READ)) {
@@ -777,7 +777,7 @@ static void writeEEPROM_WS() {
   display_Clear();
   print_Msg(F("Writing "));
   print_Msg(filePath);
-  println_Msg(F("..."));
+  print_STR(ellipsis_STR, 1);
   display_Update();
 
   if (myFile.open(filePath, O_READ)) {

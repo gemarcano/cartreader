@@ -824,7 +824,7 @@ void getMapping() {
       sprintf(crcStr, "%08lX", oldcrc32MMC3);
       print_Msg(crcStr);
     }
-    println_Msg(F("..."));
+    print_STR(ellipsis_STR, 1);
     display_Update();
     while (database.available()) {
       struct database_entry entry;
@@ -1402,7 +1402,7 @@ chooseMapper:
       display.setDrawColor(1);
       display.drawLine(60, 30, 70, 30);
     }
-    display.updateDisplay();
+    display_Update();
 
     while (1) {
       /* Check Button
@@ -1481,8 +1481,8 @@ chooseMapper:
 
   if (!validMapper) {
     errorLvl = 1;
-    display.println(F("Mapper not supported"));
-    display.updateDisplay();
+    println_Msg(F("Mapper not supported"));
+    display_Update();
     wait();
     goto chooseMapper;
   }
@@ -5120,8 +5120,8 @@ void writeFLASH() {
         }
 
 #if (defined(ENABLE_LCD) || defined(ENABLE_OLED))
-        display.print(F("*"));
-        display.updateDisplay();
+        print_Msg(F("*"));
+        display_Update();
 #else
         Serial.print(F("*"));
         if ((i != 0) && ((i + 1) % 16 == 0))
@@ -5135,8 +5135,7 @@ void writeFLASH() {
       println_Msg(F("FLASH FILE WRITTEN!"));
       display_Update();
     } else {
-      rgbLed(red_color);
-      println_Msg(F("SD ERROR"));
+      print_Error(sd_error_STR);
       display_Update();
     }
   }
@@ -5432,8 +5431,7 @@ void A29040B_writeFLASH() {
       println_Msg(F("FLASH FILE WRITTEN!"));
       display_Update();
     } else {
-      rgbLed(red_color);
-      println_Msg(F("SD ERROR"));
+      print_Error(sd_error_STR);
       display_Update();
     }
 

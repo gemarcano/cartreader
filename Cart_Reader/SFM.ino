@@ -389,7 +389,8 @@ void sfmFlashMenu() {
       // Erase mapping
       eraseMapping(0xD0);
       eraseMapping(0xE0);
-      print_Msg(F("Blankcheck..."));
+      print_STR(blankcheck_STR, 0);
+      print_STR(ellipsis_STR, 0);
       display_Update();
       if (blankcheckMapping_SFM()) {
         println_Msg(FS(FSTRING_OK));
@@ -581,7 +582,7 @@ void setup_SFM() {
 #ifdef ENABLE_CLOCKGEN
   else {
     display_Clear();
-    print_FatalError(F("Clock Generator not found"));
+    print_FatalError(clock_generator_not_found_STR);
   }
 #endif
 
@@ -1711,7 +1712,8 @@ void write_SFM(int startBank, uint32_t pos) {
       resetFlash_SFM(startBank);
       delay(1000);
       // Erase flash
-      print_Msg(F("Blankcheck..."));
+      print_STR(blankcheck_STR, 0);
+      print_STR(ellipsis_STR, 0);
       display_Update();
       if (blankcheck_SFM(startBank)) {
         println_Msg(FS(FSTRING_OK));
@@ -1724,7 +1726,8 @@ void write_SFM(int startBank, uint32_t pos) {
         eraseFlash_SFM(startBank);
         resetFlash_SFM(startBank);
         print_STR(done_STR, 1);
-        print_Msg(F("Blankcheck..."));
+        print_STR(blankcheck_STR, 0);
+        print_STR(ellipsis_STR, 0);
         display_Update();
         if (blankcheck_SFM(startBank)) {
           println_Msg(FS(FSTRING_OK));

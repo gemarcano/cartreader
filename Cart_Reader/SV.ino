@@ -124,7 +124,7 @@ void setup_SV() {
 #ifdef ENABLE_CLOCKGEN
   else {
     display_Clear();
-    print_FatalError(F("Clock Generator not found"));
+    print_FatalError(clock_generator_not_found_STR);
   }
 #endif
 
@@ -318,7 +318,8 @@ void readSRAM_SV() {
   display_Clear();
   print_Msg(F("Saved to "));
   print_Msg(folder);
-  println_Msg(F("/..."));
+  print_STR(slash_STR, 0);
+  print_STR(ellipsis_STR, 1);
   display_Update();
   wait();
 }
